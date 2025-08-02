@@ -8,6 +8,5 @@ export interface IUser {
     phoneNumber: string;
     address: string;
     role: UserRole;
-    createdAt?: Date;
-    updatedAt?: Date;
+    isVerified: boolean;
 }

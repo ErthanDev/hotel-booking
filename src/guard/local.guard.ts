@@ -16,6 +16,7 @@ export class LocalAuthGuard extends AuthGuard('local') {
             throw err || new UnauthorizedException();
           }
         }
+        console.log('User authenticated successfully:', user);
         return user;
       }
 }

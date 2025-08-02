@@ -1,11 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Res, UseGuards, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { User } from 'src/decorators/user-infor.decorator';
 import type { IUser } from '../users/user.interface';
 import { Public } from 'src/decorators/public.decorator';
 import { LocalAuthGuard } from 'src/guard/local.guard';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { ResponseMessage } from 'src/decorators/response-message.decorator';
 
 
@@ -34,5 +34,21 @@ export class AuthController {
   @ResponseMessage('User profile retrieved successfully')
   async getMyProfile(@User() user: IUser) {
     return this.authService.getMyProfile(user);
+  }
+
+
+  @Post('refresh-token')
+  @Public()
+  @ResponseMessage('Refresh token generated successfully')
+  async handleRefreshToken(@Req() req: Request, @Res({ passthrough: true }) response: Response) {
+    const refresh_token = req.cookies['refresh_token'];
+    return this.authService.handleRefreshToken(refresh_token, response);
+  }
+
+  @Post('verify-otp')
+  @Public()
+  @ResponseMessage('OTP verified successfully')
+  async verifyOtp(@Body('email') email: string, @Body('otp') otp: string) {
+    return this.authService.verifyOtp(email, otp);
   }
 }

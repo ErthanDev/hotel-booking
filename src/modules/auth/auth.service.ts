@@ -1,4 +1,4 @@
-import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { RegisterDto } from './dto/register.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from '../users/schema/user.schema';
@@ -8,15 +8,21 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AppException } from 'src/common/exception/app.exception';
 import { IUser } from '../users/user.interface';
+import ms from 'ms';
+import { CacheService } from '../cache/cache.service';
+import { NAME_ACTION } from 'src/constants/name-action.enum';
+import { NAME_QUEUE } from 'src/constants/name-queue.enum';
 import { Response } from 'express';
 @Injectable()
 export class AuthService {
-
+  private readonly logger = new Logger(AuthService.name);
+  private timeResendEmail = 60;
   constructor(
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
     private jwtService: JwtService,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private readonly cacheService: CacheService
   ) { }
 
 
@@ -60,6 +66,7 @@ export class AuthService {
     const user = new this.userModel({
       email, password: hashedPassword, address, firstName, lastName, phoneNumber
     });
+    await this.sendOtp(email);
     return user.save();
   }
 
@@ -69,20 +76,35 @@ export class AuthService {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
-      role: user.role
+      role: user.role,
+      sub: "token login",
+      iss: "from server",
     };
-    const accessToken = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_ACCESS_TOKEN_SECRET'),
-      expiresIn: this.configService.get<string>('JWT_ACCESS_TOKEN_EXPIRATION_TIME'),
+
+    const refresh_token = this.generateRefreshToken(payload)
+    const refreshExpiresIn: string = this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRATION_TIME') || '1d';
+    const maxAge: number = ms(refreshExpiresIn) ?? 0;
+
+    response.cookie('refresh_token', refresh_token, {
+      httpOnly: true,
+      secure: true,
+      maxAge: maxAge,
+      sameSite: 'none',
     });
-    response.cookie('access_token', accessToken, { httpOnly: true });
+    if (!user.isVerified) {
+      await this.sendOtp(user.email);
+      return {
+        isVerified: user.isVerified,
+        user: {
+          email: user.email,
+        }
+      }
+    }
     return {
-      access_token: accessToken,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      phoneNumber: user.phoneNumber,
-      address: user.address,
+      access_token: this.jwtService.sign(payload),
+      user: {
+        email: user.email,
+      }
     };
 
   }
@@ -91,5 +113,148 @@ export class AuthService {
 
     return payload;
   }
+
+  private generateRefreshToken = (payload: any) => {
+    const refresh_token = this.jwtService.sign(payload, {
+      secret: this.configService.get<string>('JWT_REFRESH_TOKEN_SECRET'),
+      expiresIn: this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRATION_TIME')
+    })
+    return refresh_token
+  }
+
+
+  async handleRefreshToken(refreshToken: string, response: Response) {
+    try {
+      const payload = this.jwtService.verify(refreshToken, {
+        secret: this.configService.get<string>('JWT_REFRESH_TOKEN_SECRET'),
+      });
+
+      const user = await this.userModel.findById(payload._id).lean();
+      if (!user) {
+        throw new AppException({
+          message: 'User not found',
+          errorCode: 'USER_NOT_FOUND',
+          statusCode: HttpStatus.NOT_FOUND,
+        });
+      }
+
+      const newPayload = {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        sub: "token refresh",
+        iss: "from server",
+      };
+
+      const newAccessToken = this.jwtService.sign(newPayload, {
+        secret: this.configService.get<string>('JWT_ACCESS_TOKEN_SECRET'),
+        expiresIn: this.configService.get<string>('JWT_ACCESS_TOKEN_EXPIRATION_TIME'),
+      });
+
+      const newRefreshToken = this.generateRefreshToken(newPayload);
+
+      const refreshExpiresIn: string = this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRATION_TIME') || '1d';
+      const maxAge: number = ms(refreshExpiresIn) ?? 0;
+      response.cookie('refresh_token', newRefreshToken, {
+        httpOnly: true,
+        secure: true,
+        maxAge: maxAge,
+        sameSite: 'none',
+      });
+
+      return {
+        access_token: newAccessToken,
+        user: {
+          email: user.email,
+        }
+      };
+
+    } catch (error) {
+      response.clearCookie('refresh_token');
+
+      throw new AppException({
+        message: 'Invalid refresh token',
+        errorCode: 'INVALID_REFRESH_TOKEN',
+        statusCode: HttpStatus.UNAUTHORIZED,
+      });
+    }
+  }
+
+  private async sendOtp(email: string) {
+    this.logger.debug(`Start send otp verify email:  ${email}`);
+    const currentTime = Date.now();
+    const cachedData = await this.cacheService.getValueOtp(
+      NAME_ACTION.SEND_OTP_VERIFY_EMAIL,
+      email,
+    );
+
+    if (
+      cachedData.time &&
+      (currentTime - Number(cachedData.time)) / 1000 < this.timeResendEmail
+    ) {
+      this.logger.warn(
+        `send OTP Verify Email ,Email resend blocked. Time since last email: ${(currentTime - Number(cachedData.time)) / 1000}s` +
+        'email' +
+        email,
+      );
+      throw new AppException({
+        message: `Email resend blocked. Time since last email: ${(currentTime - Number(cachedData.time)) / 1000}s`,
+        errorCode: 'EMAIL_RESEND_BLOCKED',
+        statusCode: HttpStatus.BAD_REQUEST,
+      });
+    }
+
+    const userUseEmail = await this.userModel.findOne({ email });
+    console.log('userUseEmail', userUseEmail);
+    if (userUseEmail?.isVerified) {
+      this.logger.warn(
+        `Send OTP Verify Email ${email}, Email already in use }`,
+      );
+      throw new AppException({
+        message: `Email already in use`,
+        errorCode: 'EMAIL_ALREADY_IN_USE',
+        statusCode: HttpStatus.BAD_REQUEST,
+      });
+    }
+
+    await this.cacheService.generateOtp(
+      NAME_ACTION.SEND_OTP_VERIFY_EMAIL,
+      email,
+      currentTime,
+      NAME_QUEUE.SEND_OTP_VERIFY_EMAIL,
+    );
+
+    this.logger.debug(`End send otp verify email email ${email}`);
+
+    return {
+      success: true,
+      message: `Email has been sent ${email}`,
+    };
+  }
+
+  async verifyOtp(email: string, otp: string) {
+    this.logger.debug(`Start verify otp email: ${email}`);
+    const isValidEmail = await this.cacheService.validateOtp(NAME_ACTION.SEND_OTP_VERIFY_EMAIL, email, otp);
+    if (!isValidEmail) {
+      this.logger.warn(`Verify OTP failed for email: ${email}`);
+      throw new AppException({
+        message: 'Invalid or expired OTP',
+        errorCode: 'INVALID_OTP',
+        statusCode: HttpStatus.BAD_REQUEST,
+      });
+    }
+    await this.userModel.updateOne({ email }, { isVerified: true });
+    this.logger.debug(`OTP verified successfully for email: ${email}`);
+    await this.cacheService.deleteOtp(NAME_ACTION.SEND_OTP_VERIFY_EMAIL, email);
+    this.logger.debug(`End verify otp email: ${email}`);
+
+    return {
+      success: true,
+      message: 'OTP verified successfully',
+    };
+  }
+
 
 }
