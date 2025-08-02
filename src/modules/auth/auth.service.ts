@@ -207,7 +207,6 @@ export class AuthService {
     }
 
     const userUseEmail = await this.userModel.findOne({ email });
-    console.log('userUseEmail', userUseEmail);
     if (userUseEmail?.isVerified) {
       this.logger.warn(
         `Send OTP Verify Email ${email}, Email already in use }`,
