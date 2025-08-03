@@ -32,7 +32,7 @@ export class Transaction {
     @Prop({ enum: TransactionStatus, default: TransactionStatus.PENDING })
     status: TransactionStatus;
 
-    @Prop()
+    @Prop({ type: String, required: true, unique: true })
     providerTransactionId?: string;
 
 }

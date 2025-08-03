@@ -81,7 +81,6 @@ export class MomoPaymentService {
                     amount: amount,
                     status: TransactionStatus.PENDING,
                     method: PaymentMethod.MOMO,
-                    paymentUrl: result.payUrl,
                     bookingId: bookingId,
                 });
                 await transaction.save({ session });
@@ -106,7 +105,45 @@ export class MomoPaymentService {
             });
         }
     }
+    async handlePaymentCallback(req: any) {
+        this.logger.log(`Received callback from MoMo: ${JSON.stringify(req.body)}`);
+        const { partnerCode, orderId, requestId, amount, orderInfo, transId, resultCode, message, payType, responseTime, extraData, signature } = req.body;
+        if (resultCode === 0) {
+            const transaction = await this.transactionModel.findOne({ providerTransactionId: orderId });
+            if (transaction) {
+                transaction.status = TransactionStatus.SUCCESS;
+                await transaction.save();
+
+                this.logger.log(`Transaction updated successfully: ${transaction.id}`);
+                return {
+                    status: 'success',
+                    message: 'Payment successful',
+                    transactionId: transaction.id,
+                };
+            } else {
+                this.logger.warn(`Transaction not found: ${orderId}`);
+            }
+
+        } else {
+            const transaction = await this.transactionModel.findOne({ providerTransactionId: orderId });
+            if (transaction) {
+                transaction.status = TransactionStatus.FAILED;
+                await transaction.save();
+                this.logger.log(`Transaction updated status: ${transaction.id}`);
+                return {
+                    status: 'failed',
+                    message: `Payment failed: ${message}`,
+                    transactionId: transaction.id,
+                };
+            } else {
+                this.logger.warn(`Transaction not found: ${orderId}`);
+            }
+            this.logger.warn(`Payment failed: ${message}`);
+        }
+    }
 }
+
+
 // Received callback from MoMo: {
 //   partnerCode: 'MOMO',
 //   orderId: 'BOOKING__c13au01rhg',

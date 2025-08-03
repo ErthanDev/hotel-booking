@@ -16,7 +16,6 @@ export class MomoPaymentController {
   @Public()
   async handleCallback(@Req() req: any) {
     const { body } = req;
-    console.log('Received callback from MoMo:', body);
-
+    return this.momoPaymentService.handlePaymentCallback(body);
   }
 }
