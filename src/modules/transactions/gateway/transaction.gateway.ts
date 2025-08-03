@@ -6,19 +6,25 @@ import { Server, Socket } from 'socket.io';
     cors: { origin: '*' },
     transports: ['websocket'],
 })
-export class TransactionGateway implements OnGatewayConnection {
+export class TransactionGateway implements OnGatewayConnection, OnGatewayInit {
+
     private logger = new Logger(TransactionGateway.name);
     @WebSocketServer()
     server: Server;
 
-    handleConnection(client: Socket) {
+    handleConnection(@ConnectedSocket() client: Socket) {
         this.logger.log(`Client connected: ${client.id}`);
 
-        
+
+    }
+
+
+    afterInit(server: any) {
+        this.logger.log('WebSocket server initialized');
     }
 
     @SubscribeMessage('join')
-    handleJoin(
+    async handleJoin(
         @ConnectedSocket() client: Socket,
         @MessageBody() userEmail: string,
     ) {
