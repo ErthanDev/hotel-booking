@@ -2,16 +2,14 @@ import { OnQueueEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { NAME_QUEUE } from 'src/constants/name-queue.enum';
-import { MailService } from 'src/modules/mail/mail.service';
 import { MomoPaymentService } from 'src/modules/momo-payment/momo-payment.service';
 
 
-@Processor('otp')
-export class OtpProcessor extends WorkerHost {
-  private readonly logger = new Logger(OtpProcessor.name);
+@Processor('momo-payment')
+export class TransactionProcessor extends WorkerHost {
+  private readonly logger = new Logger(TransactionProcessor.name);
 
   constructor(
-    private readonly mailService: MailService,
     private readonly momoPaymentService: MomoPaymentService,
   ) {
     super();
@@ -31,14 +29,12 @@ export class OtpProcessor extends WorkerHost {
       `Job ${jobId} failed: ${error.message || JSON.stringify(error)}`,
     );
   }
-  
+
   async process(job: Job<any, any, string>): Promise<any> {
     this.logger.log(`Processing job ${job.name} with ID ${job.id}`);
     try {
       switch (job.name) {
-        case NAME_QUEUE.SEND_OTP_VERIFY_EMAIL:
-          await this.handleSendOtpVerify(job);
-          break;
+
         case NAME_QUEUE.HANDLE_CREATE_PAYMENT_URL:
           await this.handleCreatePaymentUrl(job);
           break;
@@ -58,32 +54,14 @@ export class OtpProcessor extends WorkerHost {
     }
 
   }
-  private async handleSendOtpVerify(job: Job<any, any, string>) {
-    const { email, otp } = job.data;
-    this.logger.log(`Sending OTP email to ${email} with OTP: ${otp}`);
-    try {
-      await this.mailService.sendVerificationEmail(email, otp);
-      this.logger.log(`OTP email sent successfully to ${email}`);
-      return { success: true, message: 'OTP email sent successfully' };
-    } catch (error) {
-      this.logger.error(`Failed to send OTP email to ${email}: ${error.message}`);
-
-      return { success: false, error: error.message };
-    }
-  }
 
   private async handleCreatePaymentUrl(job: Job<any, any, string>) {
     const { bookingId, userEmail, amount, session } = job.data;
     this.logger.log(`Creating payment link for booking ID: ${bookingId} with amount: ${amount}`);
 
-    try {
-      const result = await this.momoPaymentService.createLinkPayment(amount, bookingId, session, userEmail);
-      this.logger.log(`Payment link created successfully: ${result.payUrl}`);
-      return result;
-    } catch (error) {
-      this.logger.error(`Failed to create payment link for booking ID ${bookingId}: ${error.message}`);
+    const result = await this.momoPaymentService.createLinkPayment(amount, bookingId, session, userEmail);
+    this.logger.log(`Payment link created successfully: ${result.payUrl}`);
+    return result;
 
-      return { success: false, error: error.message };
-    }
   }
 }

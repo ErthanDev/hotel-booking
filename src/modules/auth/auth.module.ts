@@ -31,6 +31,6 @@ import { MailModule } from '../mail/mail.module';
     MailModule
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy, OtpProcessor,],
+  providers: [AuthService, LocalStrategy, JwtStrategy,],
 })
 export class AuthModule { }

@@ -34,8 +34,8 @@ export class Room {
     @Prop({ type: String, required: true })
     image: string;
 
-    @Prop({ type: String, required: true, enum: OccupancyStatus, default: OccupancyStatus.EMPTY })
-    occupancyStatus: string;
+    @Prop({ type: Boolean, default: false })
+    isCheckIn: boolean;
 }
 
 export const RoomSchema = SchemaFactory.createForClass(Room);

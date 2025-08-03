@@ -3,6 +3,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
+import { NAME_QUEUE } from 'src/constants/name-queue.enum';
 
 @Injectable()
 export class CacheService {
@@ -10,7 +11,7 @@ export class CacheService {
     constructor(
         @InjectRedis() private readonly redis: Redis,
         @InjectQueue('otp') private readonly otpQueue: Queue,
-
+        @InjectQueue('momo-payment') private readonly momoPaymentQueue: Queue,
     ) { }
 
     async generateOtp(
@@ -63,4 +64,44 @@ export class CacheService {
         const { otp: cachedOtp } = JSON.parse(cachedData);
         return cachedOtp === otp;
     }
+
+    async lockRoom(roomId: string, checkIn: Date, checkOut: Date) {
+        const checkInStr = checkIn.toISOString();
+        const checkOutStr = checkOut.toISOString();
+        const lockKey = `room_lock:${roomId}:${checkInStr}:${checkOutStr}`;
+        await this.redis.set(lockKey, 'LOCKED', 'EX', 5 * 60);
+    }
+
+
+    async isRoomTimeLocked(roomId: string, checkIn: Date, checkOut: Date): Promise<boolean> {
+        const keys = await this.redis.keys(`room_lock:${roomId}:*`);
+
+        for (const key of keys) {
+            const [_, __, ___, lockedCheckInStr, lockedCheckOutStr] = key.split(':');
+            const lockedCheckIn = new Date(lockedCheckInStr);
+            const lockedCheckOut = new Date(lockedCheckOutStr);
+
+            const isOverlap =
+                checkIn < lockedCheckOut && checkOut > lockedCheckIn;
+
+            if (isOverlap) return true;
+        }
+
+        return false;
+    }
+
+    async unlockRoom(roomId: string, checkIn: Date, checkOut: Date) {
+        const checkInStr = checkIn.toISOString();
+        const checkOutStr = checkOut.toISOString();
+        const lockKey = `room_lock:${roomId}:${checkInStr}:${checkOutStr}`;
+        await this.redis.del(lockKey);
+    }
+
+    async addToMomoPaymentQueue(data: any) {
+        await this.momoPaymentQueue.add(`${NAME_QUEUE.HANDLE_CREATE_PAYMENT_URL}`, data, {
+            removeOnFail: false,
+        });
+    }
+
+
 }

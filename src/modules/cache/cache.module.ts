@@ -4,6 +4,7 @@ import { CacheController } from './cache.controller';
 import { RedisModule } from '@nestjs-modules/ioredis';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
+import { MomoPaymentModule } from '../momo-payment/momo-payment.module';
 
 @Module({
   imports: [
@@ -20,7 +21,9 @@ import { BullModule } from '@nestjs/bullmq';
     BullModule.registerQueue({
       name: 'otp',
     }),
-    
+    BullModule.registerQueue({
+      name: 'momo-payment',
+    }),
   ],
   controllers: [CacheController],
   providers: [CacheService],

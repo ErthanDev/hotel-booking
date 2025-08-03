@@ -7,4 +7,22 @@ export class UtilsService {
             Object.entries(obj).filter(([_, value]) => value !== '')
         );
     }
+
+    generateRandom(
+        length: number,
+        includeUppercase: boolean = false,
+    ): string {
+        const lowercaseChars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        const uppercaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const chars = includeUppercase
+            ? lowercaseChars + uppercaseChars
+            : lowercaseChars;
+
+        let randomString = '';
+        for (let i = 0; i < length; i++) {
+            randomString += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return randomString;
+    }
+
 }

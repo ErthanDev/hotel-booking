@@ -77,6 +77,7 @@ export class AuthService {
       lastName: user.lastName,
       email: user.email,
       role: user.role,
+      phoneNumber: user.phoneNumber,
       sub: "token login",
       iss: "from server",
     };
@@ -144,6 +145,7 @@ export class AuthService {
         lastName: user.lastName,
         email: user.email,
         role: user.role,
+        phoneNumber: user.phoneNumber,
         sub: "token refresh",
         iss: "from server",
       };

@@ -14,6 +14,9 @@ import { UtilsModule } from './modules/utils/utils.module';
 import { CacheModule } from './modules/cache/cache.module';
 import { BullModule } from '@nestjs/bullmq';
 import { MailModule } from './modules/mail/mail.module';
+import { MomoPaymentModule } from './modules/momo-payment/momo-payment.module';
+import { OtpProcessor } from './proccessor/otp.processor';
+import { TransactionProcessor } from './proccessor/transactions.processor';
 
 @Module({
   imports: [
@@ -60,9 +63,10 @@ import { MailModule } from './modules/mail/mail.module';
     UploadModule,
     UtilsModule,
     CacheModule,
-    MailModule
+    MailModule,
+    MomoPaymentModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, OtpProcessor, TransactionProcessor],
 })
 export class AppModule { }
