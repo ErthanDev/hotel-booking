@@ -22,7 +22,6 @@ export class MomoPaymentService {
         private readonly configService: ConfigService,
         @InjectModel(Transaction.name)
         private readonly transactionModel: Model<TransactionDocument>,
-        private readonly utilsService: UtilsService,
         private readonly transactionsGateway: TransactionGateway,
     ) {
         this.accessKey = this.configService.get<string>('MOMO_ACCESS_KEY') ?? '';
@@ -35,7 +34,7 @@ export class MomoPaymentService {
         this.logger.log(`Creating payment link for booking ID: ${bookingId} with amount: ${amount}`);
         var orderInfo = 'Payment for booking';
         var requestType = "payWithMethod";
-        var orderId = `BOOKING__` + this.utilsService.generateRandom(10, false);
+        var orderId = bookingId
         var requestId = orderId;
         var extraData = '';
         var orderGroupId = '';

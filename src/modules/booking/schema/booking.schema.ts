@@ -14,6 +14,9 @@ export class Booking {
     room: Types.ObjectId;
 
     @Prop({ type: String, required: true })
+    bookingId: string;
+
+    @Prop({ type: String, required: true })
     userEmail: string;
 
     @Prop({ type: String, required: true })
@@ -33,7 +36,7 @@ export class Booking {
 
     @Prop({ type: String, required: true, enum: TypeBooking })
     typeBooking: string;
-    
+
     @Prop({
         type: String,
         enum: OccupancyStatus,
@@ -43,6 +46,12 @@ export class Booking {
 
     @Prop({ type: String })
     note?: string;
+
+    @Prop({
+        type: Date,
+        default: () => new Date(Date.now() + 10 * 60 * 1000),
+    })
+    expiredAt?: Date;
 }
 
 export const BookingSchema = SchemaFactory.createForClass(Booking);

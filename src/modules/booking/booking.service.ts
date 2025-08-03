@@ -10,6 +10,7 @@ import { CacheService } from '../cache/cache.service';
 import { TypeBooking } from 'src/constants/type-booking.enum';
 import { OccupancyStatus } from 'src/constants/occupancy-status.enum';
 import { MomoPaymentService } from '../momo-payment/momo-payment.service';
+import { UtilsService } from '../utils/utils.service';
 
 @Injectable()
 export class BookingService {
@@ -20,8 +21,7 @@ export class BookingService {
     @InjectModel(Room.name)
     private readonly roomModel: Model<RoomDocument>,
     private readonly cacheService: CacheService,
-    @InjectConnection() private readonly connection: Connection,
-    private readonly momoPaymentService: MomoPaymentService,
+    private readonly utilsService: UtilsService,
   ) { }
 
   async createBooking(createBookingDto: CreateBookingDto, userEmail: string, userPhone: string) {
@@ -65,9 +65,10 @@ export class BookingService {
         });
       }
       const totalPrice = await this.calculateTotalPrice(roomId, checkIn, checkOut, createBookingDto.numberOfGuests, createBookingDto.typeBooking || TypeBooking.DAILY);
-
+      const bookingId = 'booking__'+ this.utilsService.generateRandom(10, false);
       const booking = new this.bookingModel({
         room: roomId,
+        bookingId,
         typeBooking: createBookingDto.typeBooking || TypeBooking.DAILY,
         numberOfGuests: createBookingDto.numberOfGuests,
         totalPrice,
@@ -79,7 +80,6 @@ export class BookingService {
       });
 
       await booking.save();
-      const bookingId = (booking._id as Types.ObjectId).toString();
       this.logger.log(`Booking created with ID: ${bookingId}`);
       this.logger.log(`Creating payment link for booking ID: ${bookingId} with amount: ${totalPrice}`);
 

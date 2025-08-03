@@ -6,6 +6,7 @@ import { Booking, BookingSchema } from './schema/booking.schema';
 import { Room, RoomSchema } from '../rooms/schema/room.schema';
 import { CacheModule } from '../cache/cache.module';
 import { MomoPaymentModule } from '../momo-payment/momo-payment.module';
+import { UtilsModule } from '../utils/utils.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { MomoPaymentModule } from '../momo-payment/momo-payment.module';
     ]),
     CacheModule,
     MomoPaymentModule,
+    UtilsModule, 
   ],
   controllers: [BookingController],
   providers: [BookingService],
