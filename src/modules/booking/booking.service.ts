@@ -64,12 +64,11 @@ export class BookingService {
           statusCode: HttpStatus.CONFLICT,
         });
       }
-      const totalPrice = await this.calculateTotalPrice(roomId, checkIn, checkOut, createBookingDto.numberOfGuests, createBookingDto.typeBooking || TypeBooking.DAILY);
-      const bookingId = 'booking__'+ this.utilsService.generateRandom(10, false);
+      const totalPrice = await this.calculateTotalPrice(roomId, checkIn, checkOut, createBookingDto.numberOfGuests);
+      const bookingId = 'booking__' + this.utilsService.generateRandom(10, false);
       const booking = new this.bookingModel({
         room: roomId,
         bookingId,
-        typeBooking: createBookingDto.typeBooking || TypeBooking.DAILY,
         numberOfGuests: createBookingDto.numberOfGuests,
         totalPrice,
         note: createBookingDto.note,
@@ -124,20 +123,51 @@ export class BookingService {
     return !overlap;
   }
 
-  async calculateTotalPrice(roomId: string, checkIn: Date, checkOut: Date, numberOfGuests: number, typeBooking: TypeBooking): Promise<number> {
+  async calculateTotalPrice(roomId: string, checkIn: Date, checkOut: Date, numberOfGuests: number): Promise<number> {
     const room = await this.roomModel.findById(roomId);
     if (!room) throw new AppException({
       message: `Room with ID ${roomId} not found`,
       errorCode: 'ROOM_NOT_FOUND',
       statusCode: HttpStatus.NOT_FOUND,
     });
-    if (typeBooking === TypeBooking.HOURLY) {
-      const hours = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60));
-      return room.priceByHour * hours * numberOfGuests;
-    }
+
     const basePrice = room.priceByDay;
     const duration = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24); // in days
     const roundedDuration = Math.ceil(duration);
     return basePrice * roundedDuration * numberOfGuests;
+  }
+
+  async getAvailableRooms(
+    startDate: string,
+    endDate: string,
+    maxPrice?: number,
+    numberOfGuests?: number,
+    roomType?: string,
+    limit: number = 10,
+    page: number = 1,
+  ) {
+    const skip = (page - 1) * limit;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const overlappingBookings = await this.bookingModel.find({
+      status: OccupancyStatus.CONFIRMED,
+      $or: [
+        { checkin: { $lt: end }, checkout: { $gt: start } },
+      ],
+    }).select('roomId');
+
+    const unavailableRoomIds = overlappingBookings.map((b: any) => b.roomId);
+
+    const availableRooms = await this.roomModel.find({
+      _id: { $nin: unavailableRoomIds },
+      price: { $lte: maxPrice },
+      capacity: { $gte: numberOfGuests },
+      ...(roomType ? { roomType } : {}),
+    })
+      .skip(skip)
+      .limit(limit)
+
+    return availableRooms;
+
   }
 }

@@ -26,8 +26,6 @@ export class RoomTypesService {
       const roomType = new this.roomTypeModel({
         name: createRoomTypeDto.name,
         introduction: createRoomTypeDto.introduction,
-        beds: createRoomTypeDto.beds,
-        maxPeople: createRoomTypeDto.maxPeople,
         image: image,
 
       });

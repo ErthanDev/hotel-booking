@@ -31,8 +31,12 @@ export class CreateRoomDto {
     @Min(0)
     priceByDay: number;
 
+    @IsString()
+    @IsNotEmpty()
+    beds: string;
+
     @Type(() => Number)
     @IsNumber()
-    @Min(0)
-    priceByHour: number;
+    @Min(1)
+    maxPeople: number;
 }

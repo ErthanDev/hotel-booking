@@ -12,22 +12,7 @@ export class UpdateRoomTypeDto {
     @IsString()
     introduction: string;
 
-    @IsOptional()
-    @IsNumber()
-    @Type(() => Number)
-    @Min(1)
-    sizeRoom: number;
 
-    @IsOptional()
-    @IsNumber()
-    @Type(() => Number)
-    beds: number;
 
-    @IsOptional()
-    @IsNumber()
-    @Type(() => Number)
-    @Min(1)
-    maxPeople: number;
 
-    
 }

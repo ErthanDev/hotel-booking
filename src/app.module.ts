@@ -19,6 +19,7 @@ import { OtpProcessor } from './proccessor/otp.processor';
 import { TransactionProcessor } from './proccessor/transactions.processor';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BookingCron } from './cron/booking-cron';
+import { CommentsModule } from './modules/comments/comments.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { BookingCron } from './cron/booking-cron';
     CacheModule,
     MailModule,
     MomoPaymentModule,
+    CommentsModule,
   ],
   controllers: [AppController],
   providers: [AppService, OtpProcessor, TransactionProcessor, BookingCron],

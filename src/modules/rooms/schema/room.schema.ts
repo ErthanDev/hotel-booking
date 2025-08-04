@@ -28,8 +28,11 @@ export class Room {
     @Prop({ required: true, min: 0 })
     priceByDay: number;
 
-    @Prop({ required: true, min: 0 })
-    priceByHour: number;
+    @Prop({ type: String, required: true })
+    beds: string;
+
+    @Prop({ type: Number, required: true })
+    maxPeople: number;
 
     @Prop({ type: String, required: true })
     image: string;

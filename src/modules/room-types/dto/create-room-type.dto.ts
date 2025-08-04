@@ -11,18 +11,7 @@ export class CreateRoomTypeDto {
     @IsString()
     introduction: string;
 
-    
 
-    @IsNotEmpty()
-    @Type(() => Number)
-    @IsNumber()
 
-    beds: number;
-
-    @IsNotEmpty()
-    @Type(() => Number)
-    @IsNumber()
-    @Min(1)
-    maxPeople: number;
 
 }

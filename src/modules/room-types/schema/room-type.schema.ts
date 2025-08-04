@@ -15,14 +15,6 @@ export class RoomType {
     @Prop({ type: String, required: true })
     introduction: string;
 
-    @Prop({ type: Number, required: true })
-    sizeRoom: number;
-
-    @Prop({ type: String, required: true })
-    beds: string;
-
-    @Prop({ type: Number, required: true })
-    maxPeople: number;
 
     @Prop({ type: String, required: true })
     image: string;

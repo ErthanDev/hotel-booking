@@ -34,8 +34,6 @@ export class Booking {
     @Prop({ type: Number, required: true, min: 0 })
     totalPrice: number;
 
-    @Prop({ type: String, required: true, enum: TypeBooking })
-    typeBooking: string;
 
     @Prop({
         type: String,

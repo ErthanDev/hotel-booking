@@ -20,9 +20,6 @@ export class CreateBookingDto {
     @Min(1)
     numberOfGuests: number;
 
-    @IsEnum(TypeBooking)
-    @IsNotEmpty()
-    typeBooking: TypeBooking;
 
     @IsOptional()
     @IsString()
