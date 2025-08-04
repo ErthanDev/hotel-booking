@@ -8,6 +8,8 @@ import { Model } from 'mongoose';
 import { UtilsService } from '../utils/utils.service';
 import { AppException } from 'src/common/exception/app.exception';
 import { TransactionGateway } from '../transactions/gateway/transaction.gateway';
+import { Booking, BookingDocument } from '../booking/schema/booking.schema';
+import { OccupancyStatus } from 'src/constants/occupancy-status.enum';
 const crypto = require('crypto');
 @Injectable()
 export class MomoPaymentService {
@@ -20,9 +22,12 @@ export class MomoPaymentService {
     constructor(
         private readonly httpService: HttpService,
         private readonly configService: ConfigService,
+
+        private readonly transactionsGateway: TransactionGateway,
         @InjectModel(Transaction.name)
         private readonly transactionModel: Model<TransactionDocument>,
-        private readonly transactionsGateway: TransactionGateway,
+        @InjectModel(Booking.name) private readonly bookingModel: Model<BookingDocument>,
+
     ) {
         this.accessKey = this.configService.get<string>('MOMO_ACCESS_KEY') ?? '';
         this.secretKey = this.configService.get<string>('MOMO_SECRET_KEY') ?? '';
@@ -76,11 +81,10 @@ export class MomoPaymentService {
                 .toPromise();
             if (result) {
                 const transaction = new this.transactionModel({
-                    providerTransactionId: result.orderId,
+                    providerTransactionId: bookingId,
                     amount: amount,
                     status: TransactionStatus.PENDING,
                     method: PaymentMethod.MOMO,
-                    bookingId: bookingId,
                 });
                 await transaction.save({ session });
                 if (userEmail) {
@@ -106,40 +110,42 @@ export class MomoPaymentService {
     }
     async handlePaymentCallback(req: any) {
         this.logger.log(`Received callback from MoMo: ${JSON.stringify(req.body)}`);
-        const { partnerCode, orderId, requestId, amount, orderInfo, transId, resultCode, message, payType, responseTime, extraData, signature } = req.body;
-        if (resultCode === 0) {
-            const transaction = await this.transactionModel.findOne({ providerTransactionId: orderId });
-            if (transaction) {
-                transaction.status = TransactionStatus.SUCCESS;
-                await transaction.save();
+        const { orderId, resultCode, message } = req.body;
 
-                this.logger.log(`Transaction updated successfully: ${transaction.id}`);
-                return {
-                    status: 'success',
-                    message: 'Payment successful',
-                    transactionId: transaction.id,
-                };
-            } else {
-                this.logger.warn(`Transaction not found: ${orderId}`);
-            }
 
-        } else {
-            const transaction = await this.transactionModel.findOne({ providerTransactionId: orderId });
-            if (transaction) {
-                transaction.status = TransactionStatus.FAILED;
-                await transaction.save();
-                this.logger.log(`Transaction updated status: ${transaction.id}`);
-                return {
-                    status: 'failed',
-                    message: `Payment failed: ${message}`,
-                    transactionId: transaction.id,
-                };
-            } else {
-                this.logger.warn(`Transaction not found: ${orderId}`);
-            }
-            this.logger.warn(`Payment failed: ${message}`);
+        const transaction = await this.transactionModel.findOne({ providerTransactionId: orderId });
+        if (!transaction) {
+            this.logger.warn(`Transaction not found: ${orderId}`);
+            return;
         }
+
+        transaction.status = resultCode === 0 ? TransactionStatus.SUCCESS : TransactionStatus.FAILED;
+        await transaction.save();
+
+        this.logger.log(`Transaction updated: ${transaction.id}`);
+
+        if (resultCode === 0 && transaction.providerTransactionId) {
+            await this.bookingModel.updateOne(
+                { _id: transaction.providerTransactionId },
+                { $set: { status: OccupancyStatus.CONFIRMED } }
+            );
+            this.logger.log(`Booking ${transaction.providerTransactionId} marked as SUCCESS`);
+        }
+        else {
+            await this.bookingModel.updateOne(
+                { _id: transaction.providerTransactionId },
+                { $set: { status: OccupancyStatus.FAILED } }
+            );
+            this.logger.log(`Booking ${transaction.providerTransactionId} marked as FAILED`);
+        }
+
+        return {
+            status: resultCode === 0 ? 'success' : 'failed',
+            message: resultCode === 0 ? 'Payment successful' : `Payment failed: ${message}`,
+            transactionId: transaction.id,
+        };
     }
+
 }
 
 

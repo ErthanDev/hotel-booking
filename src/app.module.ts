@@ -17,6 +17,8 @@ import { MailModule } from './modules/mail/mail.module';
 import { MomoPaymentModule } from './modules/momo-payment/momo-payment.module';
 import { OtpProcessor } from './proccessor/otp.processor';
 import { TransactionProcessor } from './proccessor/transactions.processor';
+import { ScheduleModule } from '@nestjs/schedule';
+import { BookingCron } from './cron/booking-cron';
 
 @Module({
   imports: [
@@ -54,6 +56,7 @@ import { TransactionProcessor } from './proccessor/transactions.processor';
       }),
       inject: [ConfigService],
     }),
+    ScheduleModule.forRoot(),
     RoomsModule,
     RoomTypesModule,
     BookingModule,
@@ -67,6 +70,6 @@ import { TransactionProcessor } from './proccessor/transactions.processor';
     MomoPaymentModule,
   ],
   controllers: [AppController],
-  providers: [AppService, OtpProcessor, TransactionProcessor],
+  providers: [AppService, OtpProcessor, TransactionProcessor, BookingCron],
 })
 export class AppModule { }

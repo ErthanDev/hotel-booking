@@ -6,12 +6,14 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Transaction, TransactionSchema } from '../transactions/schema/transaction.schema';
 import { UtilsModule } from '../utils/utils.module';
 import { TransactionsModule } from '../transactions/transactions.module';
+import { Booking, BookingSchema } from '../booking/schema/booking.schema';
 
 @Module({
   imports: [
     HttpModule,
     MongooseModule.forFeature([
-      { name: Transaction.name, schema: TransactionSchema }
+      { name: Transaction.name, schema: TransactionSchema },
+      { name: Booking.name, schema: BookingSchema }
     ]),
     UtilsModule,
     TransactionsModule,

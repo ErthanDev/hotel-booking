@@ -20,8 +20,7 @@ export enum PaymentMethod {
 
 @Schema({ timestamps: true, collection: 'transactions' })
 export class Transaction {
-    @Prop({ type: Types.ObjectId, ref: 'Booking', required: true })
-    bookingId: Types.ObjectId;
+
 
     @Prop({ required: true })
     amount: number;
@@ -38,3 +37,6 @@ export class Transaction {
 }
 
 export const TransactionSchema = SchemaFactory.createForClass(Transaction);
+TransactionSchema.index({ providerTransactionId: 1 }, { unique: true });
+TransactionSchema.index({ bookingId: 1 });
+TransactionSchema.index({ status: 1 });      
