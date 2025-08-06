@@ -5,6 +5,12 @@ import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 import { NAME_QUEUE } from 'src/constants/name-queue.enum';
 
+
+type OtpValidationResult = {
+    success: boolean;
+    retryAfter?: number;
+};
+
 @Injectable()
 export class CacheService {
     private readonly OTP_TTL = 60;
@@ -55,16 +61,59 @@ export class CacheService {
         await this.redis.del(key);
     }
 
-    async validateOtp(nameAction: string, email: string, otp: string): Promise<boolean> {
-        const key = `${nameAction}:${email}`;
-        const cachedData = await this.redis.get(key);
-        if (!cachedData) {
-            console
-            return false;
+    async validateOtp(nameAction: string, email: string, otp: string): Promise<OtpValidationResult> {
+        const otpKey = `${nameAction}:${email}`;
+        const failCountKey = `otp:fail:${nameAction}:${email}`;
+        const blockKey = `otp:block:${nameAction}:${email}`;
+        const blockLevelKey = `otp:blockLevel:${nameAction}:${email}`;
+
+        const isBlocked = await this.redis.get(blockKey);
+        if (isBlocked) {
+            const ttl = await this.redis.ttl(blockKey); // giây còn lại
+            return { success: false, retryAfter: ttl > 0 ? ttl : undefined };
         }
+
+        const cachedData = await this.redis.get(otpKey);
+        if (!cachedData) return { success: false };
+
         const { otp: cachedOtp } = JSON.parse(cachedData);
-        return cachedOtp === otp;
+        const isMatch = cachedOtp === otp;
+
+        if (isMatch) {
+            await this.redis.del(failCountKey, blockKey, blockLevelKey);
+            return { success: true };
+        }
+
+        // Xử lý sai
+        let failCount = parseInt((await this.redis.get(failCountKey)) || '0');
+        failCount++;
+        await this.redis.set(failCountKey, failCount, 'EX', 3600);
+
+        const blockLevel = parseInt((await this.redis.get(blockLevelKey)) || '0');
+
+        if (blockLevel === 0 && failCount >= 5) {
+            await this.redis.set(blockKey, '1', 'EX', 60);
+            await this.redis.set(blockLevelKey, '1');
+            return { success: false, retryAfter: 60 };
+        }
+
+        if (blockLevel === 1 && failCount >= 6) {
+            await this.redis.set(blockKey, '1', 'EX', 120);
+            await this.redis.set(blockLevelKey, '2');
+            return { success: false, retryAfter: 120 };
+        }
+
+        if (blockLevel === 2 && failCount >= 7) {
+            await this.redis.set(blockKey, '1', 'EX', 900); // 15 phút
+            await this.redis.set(blockLevelKey, '3');
+            return { success: false, retryAfter: 900 };
+        }
+
+        return { success: false };
     }
+
+
+
 
     async lockRoom(roomId: string, checkIn: Date, checkOut: Date) {
         const checkInStr = checkIn.toISOString();
@@ -105,7 +154,7 @@ export class CacheService {
     }
 
 
-    
+
 
     async getListRoomTypesCache(limit: number, page: number) {
         const version = await this.getVersionCache(`room_types`);

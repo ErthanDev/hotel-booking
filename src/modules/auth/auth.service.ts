@@ -237,9 +237,16 @@ export class AuthService {
 
   async verifyOtp(email: string, otp: string) {
     this.logger.debug(`Start verify otp email: ${email}`);
-    const isValidEmail = await this.cacheService.validateOtp(NAME_ACTION.SEND_OTP_VERIFY_EMAIL, email, otp);
-    if (!isValidEmail) {
-      this.logger.warn(`Verify OTP failed for email: ${email}`);
+    const result = await this.cacheService.validateOtp(NAME_ACTION.SEND_OTP_VERIFY_EMAIL, email, otp);
+    if (!result.success) {
+      if (result.retryAfter) {
+        throw new AppException({
+          message: `Too many failed attempts. Please try again in ${result.retryAfter} seconds.`,
+          errorCode: 'OTP_BLOCKED',
+          statusCode: HttpStatus.TOO_MANY_REQUESTS,
+        });
+      }
+
       throw new AppException({
         message: 'Invalid or expired OTP',
         errorCode: 'INVALID_OTP',
