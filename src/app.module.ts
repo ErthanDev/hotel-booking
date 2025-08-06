@@ -20,6 +20,8 @@ import { TransactionProcessor } from './proccessor/transactions.processor';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BookingCron } from './cron/booking-cron';
 import { CommentsModule } from './modules/comments/comments.module';
+import { TelegramModule } from './modules/telegram/telegram.module';
+import { TelegramCron } from './cron/telegram-cron';
 
 @Module({
   imports: [
@@ -70,8 +72,9 @@ import { CommentsModule } from './modules/comments/comments.module';
     MailModule,
     MomoPaymentModule,
     CommentsModule,
+    TelegramModule,
   ],
   controllers: [AppController],
-  providers: [AppService, OtpProcessor, TransactionProcessor, BookingCron],
+  providers: [AppService, OtpProcessor, TransactionProcessor, BookingCron, TelegramCron],
 })
 export class AppModule { }

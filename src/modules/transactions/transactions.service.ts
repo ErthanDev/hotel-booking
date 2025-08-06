@@ -6,6 +6,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Booking, BookingDocument } from '../booking/schema/booking.schema';
 import { OccupancyStatus } from 'src/constants/occupancy-status.enum';
+import moment from 'moment-timezone';
 
 @Injectable()
 export class TransactionsService {
@@ -72,6 +73,33 @@ export class TransactionsService {
       this.logger.debug(`Updating ${transactionUpdates.length} transactions to status ${TransactionStatus.FAILED}`);
       await this.transactionModel.bulkWrite(transactionUpdates);
     }
+  }
+
+  async getRevenueForDate(date: string): Promise<number> {
+    this.logger.log(`Calculating revenue for date (VN): ${date}`);
+
+    
+    const startOfDayVN = moment.tz(date, 'Asia/Ho_Chi_Minh').startOf('day').toDate(); // 00:00 VN
+    const endOfDayVN = moment.tz(date, 'Asia/Ho_Chi_Minh').endOf('day').toDate();     // 23:59:59 VN
+
+    this.logger.log(`From: ${startOfDayVN.toISOString()} - To: ${endOfDayVN.toISOString()}`);
+
+    const totalRevenue = await this.transactionModel.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfDayVN, $lte: endOfDayVN },
+          status: TransactionStatus.SUCCESS,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$amount' },
+        },
+      },
+    ]);
+
+    return totalRevenue[0]?.total || 0;
   }
 
 }
