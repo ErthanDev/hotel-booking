@@ -8,6 +8,7 @@ import { NAME_QUEUE } from 'src/constants/name-queue.enum';
 @Injectable()
 export class CacheService {
     private readonly OTP_TTL = 60;
+    private readonly TTL = 60 * 60 * 24
     constructor(
         @InjectRedis() private readonly redis: Redis,
         @InjectQueue('otp') private readonly otpQueue: Queue,
@@ -104,4 +105,79 @@ export class CacheService {
     }
 
 
+    
+
+    async getListRoomTypesCache(limit: number, page: number) {
+        const version = await this.getVersionCache(`room_types`);
+        const cacheKey = `room_types:list:${version}:${page}:${limit}`;
+        const cachedData = await this.redis.get(cacheKey);
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+        return null;
+    }
+
+    async setListRoomTypesCache(limit: number, page: number, data: any[]) {
+        const version = await this.getVersionCache(`room_types`);
+        const cacheKey = `room_types:list:${version}:${page}:${limit}`;
+        await this.redis.set(cacheKey, JSON.stringify(data), 'EX', this.TTL);
+    }
+
+    async invalidateRoomTypesCache() {
+        await this.increaseVersionCache(`room_types`);
+    }
+
+    async getRoomTypeCacheById(id: string): Promise<any> {
+        const key = `room_type:${id}`;
+        const cachedData = await this.redis.get(key);
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+        return null;
+    }
+
+    async setRoomTypeCacheById(id: string, data: any) {
+        const key = `room_type:${id}`;
+        await this.redis.set(key, JSON.stringify(data), 'EX', this.TTL);
+    }
+
+    async invalidateRoomTypeCacheById(id: string) {
+        const key = `room_type:${id}`;
+        await this.redis.del(key);
+    }
+
+    async getRoomDetailCacheById(id: string): Promise<any> {
+        const key = `room_detail:${id}`;
+        const cachedData = await this.redis.get(key);
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+        return null;
+    }
+
+    async setRoomDetailCacheById(id: string, data: any) {
+        const key = `room_detail:${id}`;
+        await this.redis.set(key, JSON.stringify(data), 'EX', this.TTL);
+    }
+
+    async invalidateRoomDetailCacheById(id: string) {
+        const key = `room_detail:${id}`;
+        await this.redis.del(key);
+    }
+
+
+
+    async increaseVersionCache(
+        key: string
+    ) {
+        const currentVersion = await this.redis.get(`${key}:version`);
+        const newVersion = currentVersion ? parseInt(currentVersion) + 1 : 1;
+        await this.redis.set(`${key}:version`, newVersion);
+        return newVersion;
+    }
+
+    async getVersionCache(key: string): Promise<number> {
+        const version = await this.redis.get(`${key}:version`);
+        return version ? parseInt(version) : 0;
+    }
 }

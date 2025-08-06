@@ -41,10 +41,16 @@ export class RoomsService {
 
   async findOne(id: string): Promise<Room> {
     this.logger.log(`Fetching room with ID ${id}`);
+    const cachedRoom = await this.cacheService.getRoomDetailCacheById(id);
+    if (cachedRoom) {
+      this.logger.debug(`Returning cached room with ID ${id}`);
+      return cachedRoom;
+    }
     const room = await this.roomModel.findById(id).exec();
     if (!room) {
       throw new Error(`Room with ID ${id} not found`);
     }
+    await this.cacheService.setRoomDetailCacheById(id, room);
     return room;
   }
 
@@ -75,6 +81,7 @@ export class RoomsService {
     if (!updatedRoom) {
       throw new Error(`Room with ID ${id} not found`);
     }
+    await this.cacheService.invalidateRoomDetailCacheById(id);
     this.logger.log(`Room with ID ${id} updated successfully`);
     return updatedRoom;
   }
@@ -93,6 +100,8 @@ export class RoomsService {
     if (!result) {
       throw new Error(`Room with ID ${id} not found`);
     }
+    await this.cacheService.invalidateRoomDetailCacheById(id);
+
   }
 
   async findByRoomType(roomType: string): Promise<Room[]> {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, Query } from '@nestjs/common';
 import { RoomTypesService } from './room-types.service';
 import { CreateRoomTypeDto } from './dto/create-room-type.dto';
 import { UpdateRoomTypeDto } from './dto/update-room-type.dto';
@@ -18,22 +18,29 @@ export class RoomTypesController {
   }
 
   @Get()
-  findAll() {
-    return this.roomTypesService.findAll();
+  @ResponseMessage('Room types retrieved successfully')
+  findAll(
+    @Query('limit') limit: number = 10,
+    @Query('page') page: number = 1
+  ) {
+    return this.roomTypesService.findAll(limit, page);
   }
 
   @Get(':id')
+  @ResponseMessage('Room type retrieved successfully')
   findOne(@Param('id') id: string) {
     return this.roomTypesService.findOne(id);
   }
 
   @Patch(':id')
   @UseInterceptors(FileInterceptor('file'))
+  @ResponseMessage('Room type updated successfully')
   update(@Param('id') id: string, @Body() updateRoomTypeDto: UpdateRoomTypeDto, @UploadedFile() file: Express.Multer.File) {
     return this.roomTypesService.update(id, updateRoomTypeDto, file);
   }
 
   @Delete(':id')
+  @ResponseMessage('Room type removed successfully')
   remove(@Param('id') id: string) {
     return this.roomTypesService.remove(id);
   }

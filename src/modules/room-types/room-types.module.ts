@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { RoomType, RoomTypeSchema } from './schema/room-type.schema';
 import { UploadModule } from '../upload/upload.module';
 import { UtilsModule } from '../utils/utils.module';
+import { CacheModule } from '../cache/cache.module';
 
 @Module({
   imports: [
@@ -12,7 +13,8 @@ import { UtilsModule } from '../utils/utils.module';
       { name: RoomType.name, schema: RoomTypeSchema }
     ]),
     UploadModule,
-    UtilsModule
+    UtilsModule,
+    CacheModule
   ],
   controllers: [RoomTypesController],
   providers: [RoomTypesService],
