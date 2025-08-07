@@ -11,6 +11,7 @@ import { TypeBooking } from 'src/constants/type-booking.enum';
 import { OccupancyStatus } from 'src/constants/occupancy-status.enum';
 import { MomoPaymentService } from '../momo-payment/momo-payment.service';
 import { UtilsService } from '../utils/utils.service';
+import { Transaction, TransactionDocument } from '../transactions/schema/transaction.schema';
 
 @Injectable()
 export class BookingService {
@@ -20,6 +21,8 @@ export class BookingService {
     private readonly bookingModel: Model<BookingDocument>,
     @InjectModel(Room.name)
     private readonly roomModel: Model<RoomDocument>,
+    @InjectModel(Transaction.name)
+    private readonly transactionModel: Model<TransactionDocument>,
     private readonly cacheService: CacheService,
     private readonly utilsService: UtilsService,
   ) { }
@@ -150,7 +153,7 @@ export class BookingService {
     const start = new Date(startDate);
     const end = new Date(endDate);
     const overlappingBookings = await this.bookingModel.find({
-      status: OccupancyStatus.CONFIRMED,
+      status: { $in: [OccupancyStatus.CONFIRMED, OccupancyStatus.PENDING] },
       $or: [
         { checkin: { $lt: end }, checkout: { $gt: start } },
       ],
@@ -170,4 +173,41 @@ export class BookingService {
     return availableRooms;
 
   }
+
+
+  async cancelBooking(bookingId: string): Promise<void> {
+    this.logger.log(`Cancelling booking with ID: ${bookingId}`);
+
+    const booking = await this.bookingModel.findOne({ bookingId });
+    if (!booking) {
+      throw new AppException({
+        message: `Booking with ID ${bookingId} not found`,
+        errorCode: 'BOOKING_NOT_FOUND',
+        statusCode: HttpStatus.NOT_FOUND,
+      });
+    }
+
+    if (booking.status === OccupancyStatus.CANCELED) {
+      this.logger.warn(`Booking ID ${bookingId} is already canceled`);
+      return;
+    }
+
+    const now = new Date();
+    const twoDaysLater = new Date(now);
+    twoDaysLater.setDate(now.getDate() + 2);
+
+    if (booking.checkInDate <= twoDaysLater) {
+      throw new AppException({
+        message: `Cannot cancel booking less than 2 days before check-in.`,
+        errorCode: 'CANCEL_TOO_LATE',
+        statusCode: HttpStatus.BAD_REQUEST,
+      });
+    }
+
+    booking.status = OccupancyStatus.CANCELED;
+    await booking.save();
+    this.cacheService.cancelTransaction(booking.bookingId);
+    this.logger.log(`Booking with ID ${bookingId} cancelled successfully`);
+  }
+
 }

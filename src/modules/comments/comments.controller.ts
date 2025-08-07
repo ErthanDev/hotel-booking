@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { CommentsService } from './comments.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
@@ -26,8 +27,8 @@ export class CommentsController {
 
   @Get('room/:roomId')
   @ResponseMessage('Comments fetched successfully')
-  async findByRoomId(@Param('roomId') roomId: string) {
-    return await this.commentsService.findByRoomId(roomId);
+  async findByRoomId(@Param('roomId') roomId: string, @Query('limit') limit: number = 10, @Query('page') page: number = 1) {
+    return await this.commentsService.findByRoomId(roomId, limit, page);
   }
 
 

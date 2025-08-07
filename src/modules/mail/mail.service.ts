@@ -35,6 +35,10 @@ ${this.APP_NAME} Support Team
         await this.sendMail(to, subject, text, html);
 
     }
+
+    async sendMailNotiIsComingCheckIn(to: string, bookingId: string, checkInDate: string) {
+        
+    }
     private async sendMail(to: string, subject: string, text: string, html: any) {
         this.logger.log(`Sending email to ${to} with subject "${subject}"`);
         try {
@@ -49,4 +53,6 @@ ${this.APP_NAME} Support Team
             throw new Error(`Failed to send email: ${error.message}`);
         }
     }
+
+    
 }

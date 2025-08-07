@@ -7,16 +7,19 @@ import { Room, RoomSchema } from '../rooms/schema/room.schema';
 import { CacheModule } from '../cache/cache.module';
 import { MomoPaymentModule } from '../momo-payment/momo-payment.module';
 import { UtilsModule } from '../utils/utils.module';
+import { Transaction, TransactionSchema } from '../transactions/schema/transaction.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Booking.name, schema: BookingSchema },
-      { name: Room.name, schema: RoomSchema }
+      { name: Room.name, schema: RoomSchema },
+      { name: Transaction.name, schema: TransactionSchema },
+
     ]),
     CacheModule,
     MomoPaymentModule,
-    UtilsModule, 
+    UtilsModule,
   ],
   controllers: [BookingController],
   providers: [BookingService],

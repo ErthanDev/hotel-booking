@@ -215,7 +215,26 @@ export class CacheService {
     }
 
 
+    async getListCommentsCache(roomId: string, limit: number, page: number): Promise<any> {
+        const version = await this.getVersionCache(`comments:${roomId}`);
+        const cacheKey = `comments:list:${roomId}:${version}:${page}:${limit}`;
+        const cachedData = await this.redis.get(cacheKey);
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+        return null;
+    }
 
+    async setListCommentsCache(roomId: string, limit: number, page: number, data: any[]) {
+        const version = await this.getVersionCache(`comments:${roomId}`);
+        const cacheKey = `comments:list:${roomId}:${version}:${page}:${limit}`;
+        await this.redis.set(cacheKey, JSON.stringify(data), 'EX', this.TTL);
+    }
+
+
+    invalidateCommentsCache(roomId: string) {
+        this.increaseVersionCache(`comments:${roomId}`);
+    }
     async increaseVersionCache(
         key: string
     ) {
@@ -228,5 +247,11 @@ export class CacheService {
     async getVersionCache(key: string): Promise<number> {
         const version = await this.redis.get(`${key}:version`);
         return version ? parseInt(version) : 0;
+    }
+
+    async cancelTransaction(providerTransactionId: string) {
+        await this.momoPaymentQueue.add(`${NAME_QUEUE.CANCEL_TRANSACTION}`, { providerTransactionId }, {
+            removeOnFail: false,
+        });
     }
 }

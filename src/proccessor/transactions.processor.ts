@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { NAME_QUEUE } from 'src/constants/name-queue.enum';
 import { MomoPaymentService } from 'src/modules/momo-payment/momo-payment.service';
+import { TransactionsService } from 'src/modules/transactions/transactions.service';
 
 
 @Processor('momo-payment')
@@ -11,6 +12,7 @@ export class TransactionProcessor extends WorkerHost {
 
   constructor(
     private readonly momoPaymentService: MomoPaymentService,
+    private readonly transactionService: TransactionsService,
   ) {
     super();
 
@@ -38,6 +40,9 @@ export class TransactionProcessor extends WorkerHost {
         case NAME_QUEUE.HANDLE_CREATE_PAYMENT_URL:
           await this.handleCreatePaymentUrl(job);
           break;
+        case NAME_QUEUE.CANCEL_TRANSACTION:
+          await this.cancelTransaction(job);
+          break
         default:
           this.logger.warn(`No handler found for job: ${job.name}`);
       }
@@ -63,5 +68,11 @@ export class TransactionProcessor extends WorkerHost {
     this.logger.log(`Payment link created successfully: ${result.payUrl}`);
     return result;
 
+  }
+
+  private async cancelTransaction(job: Job<any, any, string>) {
+    const { providerTransactionId } = job.data;
+    this.logger.log(`Cancelling transaction with ID: ${providerTransactionId}`);
+    const transaction = await this.transactionService.cancelTransaction(providerTransactionId);
   }
 }

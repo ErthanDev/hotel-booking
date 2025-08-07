@@ -15,7 +15,7 @@ export class BookingCron {
     ) {
     }
 
-    @Cron('*/1 * * * *')
+    @Cron('*/5 * * * *')
     async handleBookingExpiration() {
         this.logger.log('Running booking expiration check...');
         try {

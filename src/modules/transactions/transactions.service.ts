@@ -78,7 +78,7 @@ export class TransactionsService {
   async getRevenueForDate(date: string): Promise<number> {
     this.logger.log(`Calculating revenue for date (VN): ${date}`);
 
-    
+
     const startOfDayVN = moment.tz(date, 'Asia/Ho_Chi_Minh').startOf('day').toDate(); // 00:00 VN
     const endOfDayVN = moment.tz(date, 'Asia/Ho_Chi_Minh').endOf('day').toDate();     // 23:59:59 VN
 
@@ -102,4 +102,13 @@ export class TransactionsService {
     return totalRevenue[0]?.total || 0;
   }
 
+
+  async cancelTransaction(providerTransactionId: string) {
+    this.logger.log(`Cancelling transaction with ID: ${providerTransactionId}`);
+    await this.transactionModel.updateOne(
+      { providerTransactionId },
+      { $set: { status: TransactionStatus.CANCELLED } },
+    );
+    this.logger.log(`Transaction ${providerTransactionId} cancelled successfully.`);
+  }
 }
