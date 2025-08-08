@@ -84,7 +84,7 @@ export class AuthService {
 
     const refresh_token = this.generateRefreshToken(payload)
     const refreshExpiresIn: string = this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRATION_TIME') || '1d';
-    const maxAge: number = ms(refreshExpiresIn) ?? 0;
+    const maxAge: number = ms(refreshExpiresIn as ms.StringValue) ?? 0;
 
     response.cookie('refresh_token', refresh_token, {
       httpOnly: true,
@@ -158,7 +158,7 @@ export class AuthService {
       const newRefreshToken = this.generateRefreshToken(newPayload);
 
       const refreshExpiresIn: string = this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRATION_TIME') || '1d';
-      const maxAge: number = ms(refreshExpiresIn) ?? 0;
+      const maxAge: number = ms(refreshExpiresIn as ms.StringValue) ?? 0;
       response.cookie('refresh_token', newRefreshToken, {
         httpOnly: true,
         secure: true,
