@@ -1,4 +1,4 @@
-import { Controller, Post, Req } from '@nestjs/common';
+import { Controller, Get, Post, Req } from '@nestjs/common';
 import { MomoPaymentService } from './momo-payment.service';
 import { Public } from 'src/decorators/public.decorator';
 
@@ -12,7 +12,7 @@ export class MomoPaymentController {
   //   return this.momoPaymentService.createLinkPayment();
   // }
 
-  @Post('callback')
+  @Get('callback')
   @Public()
   async handleCallback(@Req() req: any) {
     const { body } = req;
