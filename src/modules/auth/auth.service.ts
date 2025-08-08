@@ -16,7 +16,7 @@ import { Response } from 'express';
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private timeResendEmail = 60;
+  private timeResendEmail = 300;
   constructor(
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
@@ -264,5 +264,86 @@ export class AuthService {
     };
   }
 
+  async sendOtpForgotPassword(email: string) {
+    this.logger.debug(`Start send otp forgot password email: ${email}`);
+    const currentTime = Date.now();
+    const cachedData = await this.cacheService.getValueOtp(
+      NAME_ACTION.SEND_OTP_FORGOT_PASSWORD,
+      email,
+    );
+
+    if (
+      cachedData.time &&
+      (currentTime - Number(cachedData.time)) / 1000 < this.timeResendEmail
+    ) {
+      this.logger.warn(
+        `send OTP Forgot Password Email, Email resend blocked. Time since last email: ${(currentTime - Number(cachedData.time)) / 1000}s` +
+        'email' +
+        email,
+      );
+      throw new AppException({
+        message: `Email resend blocked. Time since last email: ${(currentTime - Number(cachedData.time)) / 1000}s`,
+        errorCode: 'EMAIL_RESEND_BLOCKED',
+        statusCode: HttpStatus.BAD_REQUEST,
+      });
+    }
+
+    const userUseEmail = await this.userModel.findOne({ email });
+    if (!userUseEmail) {
+      this.logger.warn(
+        `Send OTP Forgot Password Email ${email}, User not found`,
+      );
+      throw new AppException({
+        message: `User not found`,
+        errorCode: 'USER_NOT_FOUND',
+        statusCode: HttpStatus.NOT_FOUND,
+      });
+    }
+
+    await this.cacheService.generateOtp(
+      NAME_ACTION.SEND_OTP_FORGOT_PASSWORD,
+      email,
+      currentTime,
+      NAME_QUEUE.SEND_OTP_FORGOT_PASSWORD,
+    );
+
+    this.logger.debug(`End send otp forgot password email ${email}`);
+
+    return {
+      success: true,
+      message: `Email has been sent ${email}`,
+    };
+  }
+
+  async verifyOtpForgotPassword(email: string, otp: string, newPassword: string) {
+    this.logger.debug(`Start verify otp forgot password email: ${email}`);
+    const result = await this.cacheService.validateOtp(NAME_ACTION.SEND_OTP_FORGOT_PASSWORD, email, otp);
+    if (!result.success) {
+      if (result.retryAfter) {
+        throw new AppException({
+          message: `Too many failed attempts. Please try again in ${result.retryAfter} seconds.`,
+          errorCode: 'OTP_BLOCKED',
+          statusCode: HttpStatus.TOO_MANY_REQUESTS,
+        });
+      }
+
+      throw new AppException({
+        message: 'Invalid or expired OTP',
+        errorCode: 'INVALID_OTP',
+        statusCode: HttpStatus.BAD_REQUEST,
+      });
+    }
+    await this.cacheService.deleteOtp(NAME_ACTION.SEND_OTP_FORGOT_PASSWORD, email);
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.userModel.updateOne({ email }, { password: hashedPassword });
+    this.cacheService.sendNewPassword(email);
+    this.logger.debug(`OTP verified successfully for email: ${email}`);
+    this.logger.debug(`End verify otp forgot password email: ${email}`);
+
+    return {
+      success: true,
+      message: 'Password reset successfully',
+    };
+  }
 
 }

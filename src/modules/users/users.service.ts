@@ -11,6 +11,11 @@ export class UsersService {
   constructor(
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>
-  ) {}
+  ) { }
 
+
+  async updateUser(id: string, updateUserDto: UpdateUserDto) {
+    const user = await this.userModel.findByIdAndUpdate(id, updateUserDto, { new: true });
+    return user;
+  }
 }

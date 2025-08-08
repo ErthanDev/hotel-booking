@@ -3,7 +3,6 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { NAME_QUEUE } from 'src/constants/name-queue.enum';
 import { MailService } from 'src/modules/mail/mail.service';
-import { MomoPaymentService } from 'src/modules/momo-payment/momo-payment.service';
 
 
 @Processor('otp')
@@ -12,7 +11,6 @@ export class OtpProcessor extends WorkerHost {
 
   constructor(
     private readonly mailService: MailService,
-    private readonly momoPaymentService: MomoPaymentService,
   ) {
     super();
 
@@ -31,16 +29,22 @@ export class OtpProcessor extends WorkerHost {
       `Job ${jobId} failed: ${error.message || JSON.stringify(error)}`,
     );
   }
-  
+
   async process(job: Job<any, any, string>): Promise<any> {
     this.logger.log(`Processing job ${job.name} with ID ${job.id}`);
     try {
       switch (job.name) {
         case NAME_QUEUE.SEND_OTP_VERIFY_EMAIL:
+          this.logger.log(`Handling OTP verification for job: ${job.id}`);
           await this.handleSendOtpVerify(job);
           break;
-        case NAME_QUEUE.HANDLE_CREATE_PAYMENT_URL:
-          await this.handleCreatePaymentUrl(job);
+        case NAME_QUEUE.SEND_NEW_PASSWORD:
+          this.logger.log(`Handling new password for job: ${job.id}`);
+          await this.sendNewPasswordEmail(job.data.email);
+          break;
+        case NAME_QUEUE.SEND_OTP_FORGOT_PASSWORD:
+          this.logger.log(`Handling forgot password OTP for job: ${job.id}`);
+          await this.sendOtpForgotPassword(job.data.email, job.data.otp);
           break;
         default:
           this.logger.warn(`No handler found for job: ${job.name}`);
@@ -72,18 +76,29 @@ export class OtpProcessor extends WorkerHost {
     }
   }
 
-  private async handleCreatePaymentUrl(job: Job<any, any, string>) {
-    const { bookingId, userEmail, amount, session } = job.data;
-    this.logger.log(`Creating payment link for booking ID: ${bookingId} with amount: ${amount}`);
-
+  async sendOtpForgotPassword(email: string, otp: string) {
+    this.logger.log(`Sending OTP for forgot password to ${email}`);
     try {
-      const result = await this.momoPaymentService.createLinkPayment(amount, bookingId, session, userEmail);
-      this.logger.log(`Payment link created successfully: ${result.payUrl}`);
-      return result;
+      await this.mailService.sendForgotPasswordOtpEmail(email, otp);
+      this.logger.log(`OTP for forgot password sent successfully to ${email}`);
+      return { success: true, message: 'OTP for forgot password sent successfully' };
     } catch (error) {
-      this.logger.error(`Failed to create payment link for booking ID ${bookingId}: ${error.message}`);
-
+      this.logger.error(`Failed to send OTP for forgot password to ${email}: ${error.message}`);
       return { success: false, error: error.message };
     }
   }
+
+  async sendNewPasswordEmail(email: string) {
+    this.logger.log(`Sending new password email to ${email}`);
+    try {
+      await this.mailService.sendNewPasswordEmail(email);
+      this.logger.log(`New password email sent successfully to ${email}`);
+      return { success: true, message: 'New password email sent successfully' };
+    } catch (error) {
+      this.logger.error(`Failed to send new password email to ${email}: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  }
+
+
 }

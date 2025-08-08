@@ -13,7 +13,7 @@ type OtpValidationResult = {
 
 @Injectable()
 export class CacheService {
-    private readonly OTP_TTL = 60;
+    private readonly OTP_TTL = 300;
     private readonly TTL = 60 * 60 * 24
     constructor(
         @InjectRedis() private readonly redis: Redis,
@@ -251,6 +251,13 @@ export class CacheService {
 
     async cancelTransaction(providerTransactionId: string) {
         await this.momoPaymentQueue.add(`${NAME_QUEUE.CANCEL_TRANSACTION}`, { providerTransactionId }, {
+            removeOnFail: false,
+        });
+    }
+
+    async sendNewPassword(email: string) {
+        const newPassword = Math.random().toString(36).slice(-8);
+        await this.otpQueue.add(`${NAME_QUEUE.SEND_NEW_PASSWORD}`, { email, newPassword }, {
             removeOnFail: false,
         });
     }
