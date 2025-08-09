@@ -14,7 +14,6 @@ import { UtilsModule } from './modules/utils/utils.module';
 import { CacheModule } from './modules/cache/cache.module';
 import { BullModule } from '@nestjs/bullmq';
 import { MailModule } from './modules/mail/mail.module';
-import { MomoPaymentModule } from './modules/momo-payment/momo-payment.module';
 import { OtpProcessor } from './proccessor/otp.processor';
 import { TransactionProcessor } from './proccessor/transactions.processor';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -23,6 +22,8 @@ import { CommentsModule } from './modules/comments/comments.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
 import { TelegramCron } from './cron/telegram-cron';
 import { ZalopayModule } from './modules/zalopay/zalopay.module';
+import { OutboxModule } from './modules/outbox/outbox.module';
+import { OutboxPublisher } from './modules/outbox/outbox.publisher';
 
 @Module({
   imports: [
@@ -71,10 +72,10 @@ import { ZalopayModule } from './modules/zalopay/zalopay.module';
     UtilsModule,
     CacheModule,
     MailModule,
-    MomoPaymentModule,
     CommentsModule,
     TelegramModule,
     ZalopayModule,
+    OutboxModule,
   ],
   controllers: [AppController],
   providers: [AppService, OtpProcessor, TransactionProcessor, BookingCron, TelegramCron],

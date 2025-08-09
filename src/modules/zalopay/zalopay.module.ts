@@ -7,16 +7,17 @@ import { Transaction, TransactionSchema } from '../transactions/schema/transacti
 import { Booking, BookingSchema } from '../booking/schema/booking.schema';
 import { UtilsModule } from '../utils/utils.module';
 import { TransactionsModule } from '../transactions/transactions.module';
+import { BookingModule } from '../booking/booking.module';
 
 @Module({
   imports: [
     HttpModule,
     MongooseModule.forFeature([
       { name: Transaction.name, schema: TransactionSchema },
-      { name: Booking.name, schema: BookingSchema }
     ]),
     UtilsModule,
     TransactionsModule,
+    BookingModule,
   ],
   controllers: [ZalopayController],
   providers: [ZalopayService],

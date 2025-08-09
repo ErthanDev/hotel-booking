@@ -5,4 +5,5 @@ export enum OccupancyStatus {
     CHECKED_OUT = 'checked_out',
     CANCELED = 'canceled',
     FAILED = 'failed',
+    PAYURL_READY = 'payurl_ready',
 }

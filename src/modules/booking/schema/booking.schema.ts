@@ -34,6 +34,7 @@ export class Booking {
     @Prop({ type: Number, required: true, min: 0 })
     totalPrice: number;
 
+    @Prop() payUrl?: string;
 
     @Prop({
         type: String,

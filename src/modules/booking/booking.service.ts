@@ -1,18 +1,15 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { CreateBookingDto } from './dto/create-booking.dto';
-import { UpdateBookingDto } from './dto/update-booking.dto';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Booking, BookingDocument } from './schema/booking.schema';
-import { Connection, Model, Types } from 'mongoose';
+import { ClientSession, Connection, Model, Types } from 'mongoose';
 import { Room, RoomDocument } from '../rooms/schema/room.schema';
 import { AppException } from 'src/common/exception/app.exception';
 import { CacheService } from '../cache/cache.service';
-import { TypeBooking } from 'src/constants/type-booking.enum';
 import { OccupancyStatus } from 'src/constants/occupancy-status.enum';
-import { MomoPaymentService } from '../momo-payment/momo-payment.service';
 import { UtilsService } from '../utils/utils.service';
-import { Transaction, TransactionDocument } from '../transactions/schema/transaction.schema';
-import { ZalopayService } from '../zalopay/zalopay.service';
+import { Outbox, OutboxDocument } from '../outbox/schema/outbox.schema';
+import { OutboxStatus } from 'src/constants/outbox-status.enum';
 
 @Injectable()
 export class BookingService {
@@ -22,12 +19,10 @@ export class BookingService {
     private readonly bookingModel: Model<BookingDocument>,
     @InjectModel(Room.name)
     private readonly roomModel: Model<RoomDocument>,
-    @InjectModel(Transaction.name)
-    private readonly transactionModel: Model<TransactionDocument>,
     private readonly cacheService: CacheService,
     private readonly utilsService: UtilsService,
-    private readonly momoPaymentService: MomoPaymentService,
-    private readonly zalopayService: ZalopayService,
+    @InjectModel(Outbox.name) private readonly outboxModel: Model<OutboxDocument>,
+    @InjectConnection() private readonly connection: Connection,
   ) { }
 
   async createBooking(createBookingDto: CreateBookingDto, userEmail: string, userPhone: string) {
@@ -41,6 +36,7 @@ export class BookingService {
     const checkIn = new Date(checkInDate);
     const checkOut = new Date(checkOutDate);
     this.logger.log(`Booking details: Room ID: ${roomId}, Check-in: ${checkIn}, Check-out: ${checkOut}, User Email: ${userEmail}, User Phone: ${userPhone}`);
+
     const locked = await this.cacheService.isRoomTimeLocked(roomId, checkIn, checkOut);
     if (locked) {
       throw new AppException({
@@ -51,8 +47,11 @@ export class BookingService {
     }
 
     await this.cacheService.lockRoom(roomId, checkIn, checkOut);
+    const session: ClientSession = await this.connection.startSession();
+    session.startTransaction();
 
-    const room = await this.roomModel.findById(roomId);
+
+    const room = await this.roomModel.findById(roomId).session(session);
     if (!room) throw new AppException({
       message: `Room with ID ${roomId} not found`,
       errorCode: 'ROOM_NOT_FOUND',
@@ -84,21 +83,22 @@ export class BookingService {
         checkOutDate: checkOut,
       });
 
-      await booking.save();
+      await booking.save({ session });
       this.logger.log(`Booking created with ID: ${bookingId}`);
-      this.logger.log(`Creating payment link for booking ID: ${bookingId} with amount: ${totalPrice}`);
-      // const result = await this.momoPaymentService.createLinkPayment2(totalPrice, bookingId, null, userEmail);
-
-      await this.cacheService.addToZaloPayQueue({
-        bookingId,
-        userEmail,
-        amount: totalPrice,
-      });
+      await this.outboxModel.create([
+        {
+          type: 'BookingCreated',
+          payload: { bookingId: booking.bookingId, amount: booking.totalPrice, userEmail, userPhone },
+          status: OutboxStatus.NEW,
+        },
+      ], { session });
       // Unlock the room after booking
+      await session.commitTransaction();
       await this.cacheService.unlockRoom(roomId, checkIn, checkOut);
       this.logger.log(`Booking created successfully with ID: ${booking._id}`);
 
       const response = {
+        bookingId: booking.bookingId,
         roomId: room._id,
         checkInDate: booking.checkInDate,
         checkOutDate: booking.checkOutDate,
@@ -211,6 +211,40 @@ export class BookingService {
     await booking.save();
     this.cacheService.cancelTransaction(booking.bookingId);
     this.logger.log(`Booking with ID ${bookingId} cancelled successfully`);
+  }
+
+  async getPaymentView(id: string) {
+    const booking = await this.bookingModel.findOne({ bookingId: id }).lean();
+    if (!booking) throw new AppException({
+      message: `Booking with ID ${id} not found`,
+      errorCode: 'BOOKING_NOT_FOUND',
+      statusCode: HttpStatus.NOT_FOUND,
+    });
+    return { status: booking.status, payUrl: booking.payUrl };
+  }
+
+  async markPayUrlReady(bookingId: string, payUrl: string) {
+    return this.bookingModel.findOneAndUpdate(
+      { bookingId },
+      { $set: { status: OccupancyStatus.PAYURL_READY, payUrl }, $inc: { version: 1 } },
+      { new: true },
+    );
+  }
+
+  async markPaid(bookingId: string) {
+    return this.bookingModel.findOneAndUpdate(
+      { bookingId },
+      { $set: { status: OccupancyStatus.CONFIRMED }, $inc: { version: 1 } },
+      { new: true },
+    );
+  }
+
+  async markFailed(bookingId: string) {
+    return this.bookingModel.findOneAndUpdate(
+      { bookingId },
+      { $set: { status: OccupancyStatus.FAILED }, $inc: { version: 1 } },
+      { new: true },
+    );
   }
 
 }

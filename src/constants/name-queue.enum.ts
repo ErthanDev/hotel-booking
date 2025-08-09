@@ -7,4 +7,5 @@ export const NAME_QUEUE = {
     SEND_MAIL_NOTI_PAYMENT_SUCCESS: 'send_mail_noti_payment_success',
     SEND_MAIL_NOTI_PAYMENT_FAILED: 'send_mail_noti_payment_failed',
     SEND_MAIL_NOTI_NEARLY_CHECKIN: 'send_mail_noti_nearly_checkin',
+    CREATE_TRANSACTION: 'create_transaction',
 };

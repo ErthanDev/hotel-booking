@@ -11,6 +11,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { TransactionGateway } from '../transactions/gateway/transaction.gateway';
 import { Booking, BookingDocument } from '../booking/schema/booking.schema';
 import { OccupancyStatus } from 'src/constants/occupancy-status.enum';
+import { BookingService } from '../booking/booking.service';
 
 @Injectable()
 export class ZalopayService {
@@ -22,7 +23,7 @@ export class ZalopayService {
         @InjectModel(Transaction.name)
         private readonly transactionModel: Model<TransactionDocument>,
         private readonly httpService: HttpService,
-        @InjectModel(Booking.name) private readonly bookingModel: Model<BookingDocument>,
+        private readonly bookingService: BookingService,
     ) {
         this.config = {
             app_id: this.configService.get<string>('ZALOPAY_APP_ID'),
@@ -32,7 +33,8 @@ export class ZalopayService {
         };
     }
 
-    async createZaloPayPayment(amount: number, bookingId: string, session?: any, userEmail?: string) {
+    async createZaloPayPayment(amount: number, bookingId: string) {
+        this.logger.log(`Creating ZaloPay payment for booking ID: ${bookingId} with amount: ${amount}`);
         const items = [{}];
         const transID = bookingId;
         const embed_data = {
@@ -42,7 +44,7 @@ export class ZalopayService {
 
         const order = {
             app_id: this.config.app_id,
-            app_trans_id: `${moment().format('YYMMDD')}_${transID}`, // translation missing: vi.docs.shared.sample_code.comments.app_trans_id
+            app_trans_id: `${moment().format('YYMMDD')}_${transID}`,
             app_user: "Infinity Stay Hotel",
             app_time: Date.now(),
             item: JSON.stringify(items),
@@ -69,20 +71,17 @@ export class ZalopayService {
                     statusCode: HttpStatus.BAD_REQUEST,
                 });
             }
-            const transaction = new this.transactionModel({
-                providerTransactionId: bookingId,
-                amount: amount,
-                status: TransactionStatus.PENDING,
-                method: PaymentMethod.ZALOPAY,
-            });
-            await transaction.save({ session });
-            if (userEmail) {
-                this.transactionsGateway.sendPaymentUrl(userEmail, {
-                    bookingId,
-                    payUrl: result.order_url,
-                });
-            }
-            return result;
+
+            // if (userEmail) {
+            //     this.transactionsGateway.sendPaymentUrl(userEmail, {
+            //         bookingId,
+            //         payUrl: result.order_url,
+            //     });
+            // }
+            return {
+                order_url: result.order_url,
+                order_token: result.order_token,
+            };
         }
         catch (error) {
             console.log(error);
@@ -110,33 +109,23 @@ export class ZalopayService {
             let dataJson = JSON.parse(dataStr);
             embedData = JSON.parse(dataJson['embed_data']);
             const transaction = await this.transactionModel.findOne({ providerTransactionId: embedData['transactionId'] });
-            if (!transaction) {
-                this.logger.warn(`Transaction not found: ${embedData['transactionId']}`);
-                return;
-            }
 
-            transaction.status = result.return_code === 1 ? TransactionStatus.SUCCESS : TransactionStatus.FAILED;
-            await transaction.save();
 
             if (reqMac !== mac) {
                 this.logger.debug(`ZaloPay callback MAC mismatch: expected ${mac}, received ${reqMac}`);
                 result.return_code = -1;
                 result.return_message = "mac not equal";
 
-                await this.bookingModel.updateOne(
-                    { bookingId: transaction.providerTransactionId },
-                    { $set: { status: OccupancyStatus.FAILED } }
-                );
-                this.logger.log(`Booking ${transaction.providerTransactionId} marked as FAILED`);
+                await this.transactionModel.updateOne({ _id: transaction?._id }, { $set: { status: TransactionStatus.FAILED } });
+                const updated = await this.bookingService.markFailed(embedData['transactionId']);
+                this.logger.log(`Booking ${transaction?.providerTransactionId} marked as FAILED`);
             }
             else {
-                this.logger.debug(`ZaloPay callback successful for transaction: ${transaction.providerTransactionId}`);
+                this.logger.debug(`ZaloPay callback successful for transaction: ${transaction?.providerTransactionId}`);
                 result.return_code = 1;
                 result.return_message = "success";
-                await this.bookingModel.updateOne(
-                    { bookingId: transaction.providerTransactionId },
-                    { $set: { status: OccupancyStatus.CONFIRMED } }
-                );
+                await this.transactionModel.updateOne({ _id: transaction?._id }, { $set: { status: TransactionStatus.SUCCESS } });
+                const updated = await this.bookingService.markPaid(embedData['transactionId']);
             }
         } catch (ex) {
             this.logger.error(`ZaloPay callback error: ${ex.message}`, ex.stack)

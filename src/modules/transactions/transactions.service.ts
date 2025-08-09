@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { Transaction, TransactionDocument, TransactionStatus } from './schema/transaction.schema';
+import { PaymentMethod, Transaction, TransactionDocument, TransactionStatus } from './schema/transaction.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Booking, BookingDocument } from '../booking/schema/booking.schema';
@@ -110,5 +110,22 @@ export class TransactionsService {
       { $set: { status: TransactionStatus.CANCELLED } },
     );
     this.logger.log(`Transaction ${providerTransactionId} cancelled successfully.`);
+  }
+
+
+  async create(providerTransactionId: string, amount: number): Promise<Transaction> {
+  
+    this.logger.log(`Creating transaction for provider transaction ID: ${providerTransactionId} with amount: ${amount} type of providerTransactionId: ${typeof providerTransactionId} and amount: ${typeof amount}`);
+    const transaction = new this.transactionModel({
+      providerTransactionId,
+      amount,
+      status: TransactionStatus.PENDING,
+      method: PaymentMethod.ZALOPAY,
+    });
+    return transaction.save();
+  }
+
+  async findOneByProviderTransactionId(providerTransactionId: string): Promise<Transaction | null> {
+    return this.transactionModel.findOne({ providerTransactionId }).exec();
   }
 }

@@ -7,6 +7,7 @@ import { TransactionGateway } from './gateway/transaction.gateway';
 import { Booking, BookingSchema } from '../booking/schema/booking.schema';
 
 
+
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -14,7 +15,6 @@ import { Booking, BookingSchema } from '../booking/schema/booking.schema';
       { name: Booking.name, schema: BookingSchema }
 
     ]),
-
   ],
   controllers: [TransactionsController],
   providers: [TransactionsService, TransactionGateway],

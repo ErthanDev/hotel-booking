@@ -26,14 +26,18 @@ export class TransactionGateway implements OnGatewayConnection, OnGatewayInit {
     @SubscribeMessage('join')
     async handleJoin(
         @ConnectedSocket() client: Socket,
-        @MessageBody() userEmail: string,
+        @MessageBody() bookingId: string,
     ) {
-        this.logger.log(`Client ${client.id} joined room ${userEmail}`);
-        client.join(userEmail);
+        this.logger.log(`Client ${client.id} joined room ${bookingId}`);
+        client.join(bookingId);
     }
 
-    sendPaymentUrl(userEmail: string, data: { bookingId: string; payUrl: string }) {
-        this.logger.log(`Sending payment URL to user: ${userEmail}`);
-        this.server.to(`${userEmail}`).emit('paymentUrl', data);
+    // sendPaymentUrl(userEmail: string, data: { bookingId: string; payUrl: string }) {
+    //     this.logger.log(`Sending payment URL to user: ${userEmail}`);
+    //     this.server.to(`${userEmail}`).emit('paymentUrl', data);
+    // }
+
+    sendBookingUpdate(bookingId: string, data: any) {
+        this.server.to(bookingId).emit('booking.updated', data);
     }
 }

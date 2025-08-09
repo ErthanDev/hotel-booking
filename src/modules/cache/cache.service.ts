@@ -272,7 +272,16 @@ export class CacheService {
     }
 
 
-    async sendMailNotification(nameQueue:string, data: any) {
+    async sendMailNotification(nameQueue: string, data: any) {
         await this.mailNotificationQueue.add(nameQueue, data);
+    }
+
+    async addToOutbox(bookingId: string, amount: number) {
+        await this.paymentQueue.add(`${NAME_QUEUE.CREATE_TRANSACTION}`, { bookingId, amount }, {
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 1000 },
+            removeOnComplete: true,
+            removeOnFail: false,
+        });
     }
 }
