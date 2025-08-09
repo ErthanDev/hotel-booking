@@ -108,6 +108,79 @@ export class MomoPaymentService {
             });
         }
     }
+     async createLinkPayment2(amount: number, bookingId: string, session?: any, userEmail?: string) {
+        this.logger.log(`Creating payment link for booking ID: ${bookingId} with amount: ${amount}`);
+        var orderInfo = 'Payment for booking';
+        var requestType = "payWithMethod";
+        var orderId = bookingId
+        var requestId = orderId;
+        var extraData = '';
+        var orderGroupId = '';
+        var autoCapture = true;
+        var lang = 'vi';
+
+
+        var rawSignature = "accessKey=" + this.accessKey + "&amount=" + amount + "&extraData=" + extraData + "&ipnUrl=" + this.ipnUrl + "&orderId=" + orderId + "&orderInfo=" + orderInfo + "&partnerCode=" + this.partnerCode + "&redirectUrl=" + this.redirectUrl + "&requestId=" + requestId + "&requestType=" + requestType;
+        var signature = crypto.createHmac('sha256', this.secretKey)
+            .update(rawSignature)
+            .digest('hex');
+
+        const requestBody = JSON.stringify({
+            partnerCode: this.partnerCode,
+            partnerName: "Test",
+            storeId: "MomoTestStore",
+            requestId: requestId,
+            amount: amount,
+            orderId: orderId,
+            orderInfo: orderInfo,
+            redirectUrl: this.redirectUrl,
+            ipnUrl: this.ipnUrl,
+            lang: lang,
+            requestType: requestType,
+            autoCapture: autoCapture,
+            extraData: extraData,
+            orderGroupId: orderGroupId,
+            signature: signature
+        });
+
+        try {
+            const result: any = await this.httpService.post('https://test-payment.momo.vn/v2/gateway/api/create',
+                requestBody, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(requestBody)
+                }
+            }).pipe(map((res) => res.data))
+                .toPromise();
+            if (result) {
+                const transaction = new this.transactionModel({
+                    providerTransactionId: bookingId,
+                    amount: amount,
+                    status: TransactionStatus.PENDING,
+                    method: PaymentMethod.MOMO,
+                });
+                await transaction.save({ session });
+                if (userEmail) {
+                    this.transactionsGateway.sendPaymentUrl(userEmail, {
+                        bookingId,
+                        payUrl: result.payUrl,
+                    });
+                }
+            }
+
+            return {
+                ...result,
+            };
+        }
+        catch (error) {
+            this.logger.error('Error creating payment link:', error);
+            throw new AppException({
+                message: error.message || 'Failed to create payment link',
+                statusCode: HttpStatus.BAD_REQUEST,
+                errorCode: 'PAYMENT_LINK_CREATION_FAILED',
+            });
+        }
+    }
     async handlePaymentCallback(req: any) {
         this.logger.log(`Received callback from MoMo: ${JSON.stringify(req.body)}`);
         const { orderId, resultCode, message } = req.body;

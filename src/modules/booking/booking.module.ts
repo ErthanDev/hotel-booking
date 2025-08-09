@@ -8,6 +8,7 @@ import { CacheModule } from '../cache/cache.module';
 import { MomoPaymentModule } from '../momo-payment/momo-payment.module';
 import { UtilsModule } from '../utils/utils.module';
 import { Transaction, TransactionSchema } from '../transactions/schema/transaction.schema';
+import { ZalopayModule } from '../zalopay/zalopay.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { Transaction, TransactionSchema } from '../transactions/schema/transacti
     ]),
     CacheModule,
     MomoPaymentModule,
+    ZalopayModule,
     UtilsModule,
   ],
   controllers: [BookingController],

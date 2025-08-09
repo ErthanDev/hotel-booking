@@ -4,14 +4,16 @@ import { Job } from 'bullmq';
 import { NAME_QUEUE } from 'src/constants/name-queue.enum';
 import { MomoPaymentService } from 'src/modules/momo-payment/momo-payment.service';
 import { TransactionsService } from 'src/modules/transactions/transactions.service';
+import { ZalopayService } from 'src/modules/zalopay/zalopay.service';
 
 
-@Processor('momo-payment')
+@Processor('payment')
 export class TransactionProcessor extends WorkerHost {
   private readonly logger = new Logger(TransactionProcessor.name);
 
   constructor(
     private readonly momoPaymentService: MomoPaymentService,
+    private readonly zalopayService: ZalopayService,
     private readonly transactionService: TransactionsService,
   ) {
     super();
@@ -64,8 +66,8 @@ export class TransactionProcessor extends WorkerHost {
     const { bookingId, userEmail, amount, session } = job.data;
     this.logger.log(`Creating payment link for booking ID: ${bookingId} with amount: ${amount}`);
 
-    const result = await this.momoPaymentService.createLinkPayment(amount, bookingId, session, userEmail);
-    this.logger.log(`Payment link created successfully: ${result.payUrl}`);
+    const result = await this.zalopayService.createZaloPayPayment(amount, bookingId, session, userEmail);
+    this.logger.log(`Payment link created successfully: ${result.order_url}`);
     return result;
 
   }

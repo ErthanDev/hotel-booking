@@ -22,6 +22,7 @@ import { BookingCron } from './cron/booking-cron';
 import { CommentsModule } from './modules/comments/comments.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
 import { TelegramCron } from './cron/telegram-cron';
+import { ZalopayModule } from './modules/zalopay/zalopay.module';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { TelegramCron } from './cron/telegram-cron';
     MomoPaymentModule,
     CommentsModule,
     TelegramModule,
+    ZalopayModule,
   ],
   controllers: [AppController],
   providers: [AppService, OtpProcessor, TransactionProcessor, BookingCron, TelegramCron],

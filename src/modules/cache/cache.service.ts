@@ -18,7 +18,7 @@ export class CacheService {
     constructor(
         @InjectRedis() private readonly redis: Redis,
         @InjectQueue('otp') private readonly otpQueue: Queue,
-        @InjectQueue('momo-payment') private readonly momoPaymentQueue: Queue,
+        @InjectQueue('payment') private readonly paymentQueue: Queue,
     ) { }
 
     async generateOtp(
@@ -147,11 +147,18 @@ export class CacheService {
         await this.redis.del(lockKey);
     }
 
-    async addToMomoPaymentQueue(data: any) {
-        await this.momoPaymentQueue.add(`${NAME_QUEUE.HANDLE_CREATE_PAYMENT_URL}`, data, {
+    // async addToMomoPaymentQueue(data: any) {
+    //     await this.momoPaymentQueue.add(`${NAME_QUEUE.HANDLE_CREATE_PAYMENT_URL}`, data, {
+    //         removeOnFail: false,
+    //     });
+    // }
+
+    async addToZaloPayQueue(data: any) {
+        await this.paymentQueue.add(`${NAME_QUEUE.HANDLE_CREATE_PAYMENT_URL}`, data, {
             removeOnFail: false,
         });
     }
+
 
 
 
@@ -250,7 +257,7 @@ export class CacheService {
     }
 
     async cancelTransaction(providerTransactionId: string) {
-        await this.momoPaymentQueue.add(`${NAME_QUEUE.CANCEL_TRANSACTION}`, { providerTransactionId }, {
+        await this.paymentQueue.add(`${NAME_QUEUE.CANCEL_TRANSACTION}`, { providerTransactionId }, {
             removeOnFail: false,
         });
     }

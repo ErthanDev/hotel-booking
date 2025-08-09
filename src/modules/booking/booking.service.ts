@@ -12,6 +12,7 @@ import { OccupancyStatus } from 'src/constants/occupancy-status.enum';
 import { MomoPaymentService } from '../momo-payment/momo-payment.service';
 import { UtilsService } from '../utils/utils.service';
 import { Transaction, TransactionDocument } from '../transactions/schema/transaction.schema';
+import { ZalopayService } from '../zalopay/zalopay.service';
 
 @Injectable()
 export class BookingService {
@@ -25,6 +26,8 @@ export class BookingService {
     private readonly transactionModel: Model<TransactionDocument>,
     private readonly cacheService: CacheService,
     private readonly utilsService: UtilsService,
+    private readonly momoPaymentService: MomoPaymentService,
+    private readonly zalopayService: ZalopayService,
   ) { }
 
   async createBooking(createBookingDto: CreateBookingDto, userEmail: string, userPhone: string) {
@@ -84,9 +87,9 @@ export class BookingService {
       await booking.save();
       this.logger.log(`Booking created with ID: ${bookingId}`);
       this.logger.log(`Creating payment link for booking ID: ${bookingId} with amount: ${totalPrice}`);
+      // const result = await this.momoPaymentService.createLinkPayment2(totalPrice, bookingId, null, userEmail);
 
-
-      await this.cacheService.addToMomoPaymentQueue({
+      await this.cacheService.addToZaloPayQueue({
         bookingId,
         userEmail,
         amount: totalPrice,

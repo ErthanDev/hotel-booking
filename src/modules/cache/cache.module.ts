@@ -22,7 +22,7 @@ import { MomoPaymentModule } from '../momo-payment/momo-payment.module';
       name: 'otp',
     }),
     BullModule.registerQueue({
-      name: 'momo-payment',
+      name: 'payment',
     }),
   ],
   controllers: [CacheController],

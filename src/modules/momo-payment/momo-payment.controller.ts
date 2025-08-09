@@ -12,7 +12,7 @@ export class MomoPaymentController {
   //   return this.momoPaymentService.createLinkPayment();
   // }
 
-  @Get('callback')
+  @Post('callback')
   @Public()
   async handleCallback(@Req() req: any) {
     const { body } = req;
