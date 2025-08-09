@@ -4,4 +4,7 @@ export const NAME_QUEUE = {
     CANCEL_TRANSACTION: 'cancel_transaction',
     SEND_OTP_FORGOT_PASSWORD: 'send_otp_forgot_password',
     SEND_NEW_PASSWORD: 'send_new_password',
+    SEND_MAIL_NOTI_PAYMENT_SUCCESS: 'send_mail_noti_payment_success',
+    SEND_MAIL_NOTI_PAYMENT_FAILED: 'send_mail_noti_payment_failed',
+    SEND_MAIL_NOTI_NEARLY_CHECKIN: 'send_mail_noti_nearly_checkin',
 };

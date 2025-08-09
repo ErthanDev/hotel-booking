@@ -19,6 +19,8 @@ export class CacheService {
         @InjectRedis() private readonly redis: Redis,
         @InjectQueue('otp') private readonly otpQueue: Queue,
         @InjectQueue('payment') private readonly paymentQueue: Queue,
+        @InjectQueue('mail-notification') private readonly mailNotificationQueue: Queue,
+        // @InjectQueue('momo-payment') private
     ) { }
 
     async generateOtp(
@@ -267,5 +269,10 @@ export class CacheService {
         await this.otpQueue.add(`${NAME_QUEUE.SEND_NEW_PASSWORD}`, { email, newPassword }, {
             removeOnFail: false,
         });
+    }
+
+
+    async sendMailNotification(nameQueue:string, data: any) {
+        await this.mailNotificationQueue.add(nameQueue, data);
     }
 }

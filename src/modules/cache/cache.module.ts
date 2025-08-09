@@ -24,6 +24,9 @@ import { MomoPaymentModule } from '../momo-payment/momo-payment.module';
     BullModule.registerQueue({
       name: 'payment',
     }),
+    BullModule.registerQueue({
+      name:'mail-notification',
+    })
   ],
   controllers: [CacheController],
   providers: [CacheService],
