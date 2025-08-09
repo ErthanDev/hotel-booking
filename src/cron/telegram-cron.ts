@@ -11,7 +11,9 @@ export class TelegramCron {
 
     }
 
-    @Cron('59 16 * * *')
+    @Cron('16 10 * * *', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+    })
     async sendDailyRevenue() {
         try {
             this.logger.log('Running daily revenue report...');
