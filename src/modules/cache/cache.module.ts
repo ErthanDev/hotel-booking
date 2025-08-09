@@ -4,7 +4,6 @@ import { CacheController } from './cache.controller';
 import { RedisModule } from '@nestjs-modules/ioredis';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
-import { MomoPaymentModule } from '../momo-payment/momo-payment.module';
 
 @Module({
   imports: [

@@ -1,13 +1,13 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PaymentMethod, Transaction, TransactionDocument, TransactionStatus } from '../transactions/schema/transaction.schema';
-import { Model } from 'mongoose';
+import { Connection, Model } from 'mongoose';
 import moment from 'moment';
 import * as crypto from 'crypto';
 import { map } from 'rxjs';
 import { HttpService } from '@nestjs/axios';
 import { AppException } from 'src/common/exception/app.exception';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { TransactionGateway } from '../transactions/gateway/transaction.gateway';
 import { Booking, BookingDocument } from '../booking/schema/booking.schema';
 import { OccupancyStatus } from 'src/constants/occupancy-status.enum';
@@ -23,6 +23,7 @@ export class ZalopayService {
         private readonly transactionModel: Model<TransactionDocument>,
         private readonly httpService: HttpService,
         @InjectModel(Booking.name) private readonly bookingModel: Model<BookingDocument>,
+        @InjectConnection() private readonly connection: Connection,
     ) {
         this.config = {
             app_id: this.configService.get<string>('ZALOPAY_APP_ID'),
@@ -32,7 +33,7 @@ export class ZalopayService {
         };
     }
 
-    async createZaloPayPayment(amount: number, bookingId: string, session?: any, userEmail?: string) {
+    async createZaloPayPayment(amount: number, bookingId: string, userEmail?: string) {
         const items = [{}];
         const transID = bookingId;
         const embed_data = {
@@ -56,7 +57,8 @@ export class ZalopayService {
 
         const data = this.config.app_id + "|" + order.app_trans_id + "|" + order.app_user + "|" + order.amount + "|" + order.app_time + "|" + order.embed_data + "|" + order.item;
         order.mac = this.createSecureHash(data, this.config.key1)
-
+        const session = await this.connection.startSession();
+        session.startTransaction();
         try {
             const result: any = await this.httpService.post(this.config.endpoint, null, {
                 params: order
@@ -69,6 +71,7 @@ export class ZalopayService {
                     statusCode: HttpStatus.BAD_REQUEST,
                 });
             }
+
             const transaction = new this.transactionModel({
                 providerTransactionId: bookingId,
                 amount: amount,
@@ -77,15 +80,33 @@ export class ZalopayService {
             });
             await transaction.save({ session });
             if (userEmail) {
+                await this.bookingModel.updateOne({
+                    bookingId: bookingId,
+                }, {
+                    paymentUrl: result.order_url,
+                    status: OccupancyStatus.PAYMENT_URL
+                }, { session });
                 this.transactionsGateway.sendPaymentUrl(userEmail, {
                     bookingId,
                     payUrl: result.order_url,
                 });
+                this.logger.log(`Payment URL sent to user: ${userEmail}`);
             }
+            await session.commitTransaction();
+
             return result;
         }
         catch (error) {
-            console.log(error);
+            this.logger.error(`Error creating ZaloPay payment: ${error.message}`, error.stack);
+            await session.abortTransaction();
+            throw new AppException({
+                errorCode: 'ZALOPAY_ERROR',
+                message: error.message || 'Failed to create ZaloPay payment',
+                statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+            });
+        }
+        finally {
+            session.endSession();
         }
     }
 

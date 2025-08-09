@@ -29,4 +29,11 @@ export class BookingController {
   ) {
     return this.bookingService.getAvailableRooms(checkInDate, checkOutDate, maxPrice, numberOfGuests, roomType, limit, page);
   }
+
+  @Get(':bookingId/payment-url')
+  @ResponseMessage('Payment URL retrieved successfully')
+  async getPaymentUrl(@Param('bookingId') bookingId: string) {
+    return this.bookingService.getPaymentUrl(bookingId);
+  }
 }
+ 

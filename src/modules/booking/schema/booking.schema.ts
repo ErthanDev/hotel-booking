@@ -45,6 +45,9 @@ export class Booking {
     @Prop({ type: String })
     note?: string;
 
+    @Prop({ type: String })
+    paymentUrl?: string;
+
     @Prop({
         type: Date,
         default: () => new Date(Date.now() + 10 * 60 * 1000),

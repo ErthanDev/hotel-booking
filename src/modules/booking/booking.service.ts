@@ -1,18 +1,14 @@
 import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { CreateBookingDto } from './dto/create-booking.dto';
-import { UpdateBookingDto } from './dto/update-booking.dto';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { InjectModel } from '@nestjs/mongoose';
 import { Booking, BookingDocument } from './schema/booking.schema';
-import { Connection, Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { Room, RoomDocument } from '../rooms/schema/room.schema';
 import { AppException } from 'src/common/exception/app.exception';
 import { CacheService } from '../cache/cache.service';
-import { TypeBooking } from 'src/constants/type-booking.enum';
 import { OccupancyStatus } from 'src/constants/occupancy-status.enum';
-import { MomoPaymentService } from '../momo-payment/momo-payment.service';
 import { UtilsService } from '../utils/utils.service';
-import { Transaction, TransactionDocument } from '../transactions/schema/transaction.schema';
-import { ZalopayService } from '../zalopay/zalopay.service';
+
 
 @Injectable()
 export class BookingService {
@@ -22,12 +18,9 @@ export class BookingService {
     private readonly bookingModel: Model<BookingDocument>,
     @InjectModel(Room.name)
     private readonly roomModel: Model<RoomDocument>,
-    @InjectModel(Transaction.name)
-    private readonly transactionModel: Model<TransactionDocument>,
+
     private readonly cacheService: CacheService,
     private readonly utilsService: UtilsService,
-    private readonly momoPaymentService: MomoPaymentService,
-    private readonly zalopayService: ZalopayService,
   ) { }
 
   async createBooking(createBookingDto: CreateBookingDto, userEmail: string, userPhone: string) {
@@ -211,6 +204,24 @@ export class BookingService {
     await booking.save();
     this.cacheService.cancelTransaction(booking.bookingId);
     this.logger.log(`Booking with ID ${bookingId} cancelled successfully`);
+  }
+
+  async getPaymentUrl(bookingId: string) {
+    this.logger.log(`Retrieving payment URL for booking ID: ${bookingId}`);
+    const booking = await this.bookingModel.findOne({ bookingId, status: OccupancyStatus.PAYMENT_URL }).lean();
+    if (!booking) {
+      throw new AppException({
+        message: `Booking with ID ${bookingId} not found`,
+        errorCode: 'BOOKING_NOT_FOUND',
+        statusCode: HttpStatus.NOT_FOUND,
+      });
+    }
+
+    return {
+      paymentUrl: booking.paymentUrl,
+      status: booking.status,
+      totalPrice: booking.totalPrice,
+    }
   }
 
 }
