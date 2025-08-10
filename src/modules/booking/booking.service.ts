@@ -44,8 +44,18 @@ export class BookingService {
     }
 
     await this.cacheService.lockRoom(roomId, checkIn, checkOut);
-
-    const room = await this.roomModel.findById(roomId);
+    let room: any = null
+    const cạchedRoom = await this.cacheService.getRoomDetailCacheById(roomId);
+    if (cạchedRoom) {
+      this.logger.debug(`Returning cached room with ID ${roomId}`);
+      room = cạchedRoom;
+    }
+    else {
+      room = await this.roomModel.findById(roomId).lean().exec();
+      if (room) {
+        await this.cacheService.setRoomDetailCacheById(roomId, room);
+      }
+    }
     if (!room) throw new AppException({
       message: `Room with ID ${roomId} not found`,
       errorCode: 'ROOM_NOT_FOUND',
@@ -123,7 +133,18 @@ export class BookingService {
   }
 
   async calculateTotalPrice(roomId: string, checkIn: Date, checkOut: Date, numberOfGuests: number): Promise<number> {
-    const room = await this.roomModel.findById(roomId);
+    let room: any = null
+    const cạchedRoom = await this.cacheService.getRoomDetailCacheById(roomId);
+    if (cạchedRoom) {
+      this.logger.debug(`Returning cached room with ID ${roomId}`);
+      room = cạchedRoom;
+    }
+    else {
+      room = await this.roomModel.findById(roomId).lean().exec();
+      if (room) {
+        await this.cacheService.setRoomDetailCacheById(roomId, room);
+      }
+    }
     if (!room) throw new AppException({
       message: `Room with ID ${roomId} not found`,
       errorCode: 'ROOM_NOT_FOUND',

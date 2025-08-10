@@ -23,7 +23,7 @@ export class TransactionsService {
     const now = new Date();
 
     const expiredBookings = await this.bookingModel.find({
-      status: { $in: [OccupancyStatus.PENDING] },
+      status: { $in: [OccupancyStatus.PENDING, OccupancyStatus.PAYMENT_URL] },
       expiredAt: { $lte: now },
     });
 

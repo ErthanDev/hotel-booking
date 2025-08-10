@@ -22,6 +22,7 @@ import { CommentsModule } from './modules/comments/comments.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
 import { TelegramCron } from './cron/telegram-cron';
 import { ZalopayModule } from './modules/zalopay/zalopay.module';
+import { ChatModule } from './modules/chat/chat.module';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { ZalopayModule } from './modules/zalopay/zalopay.module';
     CommentsModule,
     TelegramModule,
     ZalopayModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService, OtpProcessor, TransactionProcessor, BookingCron, TelegramCron],

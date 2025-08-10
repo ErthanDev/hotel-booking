@@ -46,7 +46,7 @@ export class RoomsService {
       this.logger.debug(`Returning cached room with ID ${id}`);
       return cachedRoom;
     }
-    const room = await this.roomModel.findById(id).exec();
+    const room = await this.roomModel.findById(id).lean().exec();
     if (!room) {
       throw new Error(`Room with ID ${id} not found`);
     }
