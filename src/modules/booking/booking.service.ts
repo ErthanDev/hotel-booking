@@ -42,8 +42,11 @@ export class BookingService {
         statusCode: HttpStatus.BAD_REQUEST,
       });
     }
-    const checkIn = this.toVNDateAtHour(checkInDate, 10);
-    const checkOut = this.toVNDateAtHour(checkOutDate, 12);
+    const checkIn = new Date(checkInDate);
+    checkIn.setUTCHours(3, 0, 0, 0);
+
+    const checkOut = new Date(checkOutDate);
+    checkOut.setUTCHours(5, 0, 0, 0);
 
     this.logger.log(`Booking details: Room ID: ${roomId}, Check-in: ${checkIn}, Check-out: ${checkOut}, User Email: ${userEmail}, User Phone: ${userPhone}`);
     let room: any = null
@@ -262,7 +265,7 @@ export class BookingService {
     if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
       return dayjs.tz(`${dateInput} ${hour}:00`, 'YYYY-MM-DD HH:mm', VN_TZ)
         .second(0).millisecond(0)
-        .toDate();
+        .toDate(); // -> Date UTC tương ứng
     }
 
     const asVN = dayjs(dateInput).tz(VN_TZ);
