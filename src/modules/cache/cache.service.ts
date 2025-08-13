@@ -278,6 +278,8 @@ export class CacheService {
 
 
     async sendMailNotification(nameQueue: string, data: any) {
+        console.log(`Adding job to mail notification queue: ${nameQueue}`);
+        console.log(`Data: ${JSON.stringify(data)}`);
         await this.mailNotificationQueue.add(nameQueue, data);
     }
 
