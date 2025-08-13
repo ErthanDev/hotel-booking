@@ -8,11 +8,14 @@ import { AppException } from 'src/common/exception/app.exception';
 import { CacheService } from '../cache/cache.service';
 import { OccupancyStatus } from 'src/constants/occupancy-status.enum';
 import { UtilsService } from '../utils/utils.service';
-
-
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 @Injectable()
 export class BookingService {
   private readonly logger = new Logger(BookingService.name);
+
   constructor(
     @InjectModel(Booking.name)
     private readonly bookingModel: Model<BookingDocument>,
@@ -24,6 +27,7 @@ export class BookingService {
   ) { }
 
   async createBooking(createBookingDto: CreateBookingDto, userEmail: string, userPhone: string) {
+
     this.logger.log('Creating a new booking');
     const {
       roomId,
@@ -31,19 +35,17 @@ export class BookingService {
       checkOutDate,
 
     } = createBookingDto;
-    const checkIn = new Date(checkInDate);
-    const checkOut = new Date(checkOutDate);
-    this.logger.log(`Booking details: Room ID: ${roomId}, Check-in: ${checkIn}, Check-out: ${checkOut}, User Email: ${userEmail}, User Phone: ${userPhone}`);
-    const locked = await this.cacheService.isRoomTimeLocked(roomId, checkIn, checkOut);
-    if (locked) {
+    if (checkInDate === checkOutDate || checkOutDate < checkInDate) {
       throw new AppException({
-        message: 'Room is already booked for the selected time by lock',
-        errorCode: 'ROOM_ALREADY_BOOKED',
-        statusCode: HttpStatus.CONFLICT,
+        message: 'Invalid booking dates',
+        errorCode: 'INVALID_DATES',
+        statusCode: HttpStatus.BAD_REQUEST,
       });
     }
+    const checkIn = this.toVNDateAtHour(checkInDate, 10);
+    const checkOut = this.toVNDateAtHour(checkOutDate, 12);
 
-    await this.cacheService.lockRoom(roomId, checkIn, checkOut);
+    this.logger.log(`Booking details: Room ID: ${roomId}, Check-in: ${checkIn}, Check-out: ${checkOut}, User Email: ${userEmail}, User Phone: ${userPhone}`);
     let room: any = null
     const cạchedRoom = await this.cacheService.getRoomDetailCacheById(roomId);
     if (cạchedRoom) {
@@ -61,58 +63,64 @@ export class BookingService {
       errorCode: 'ROOM_NOT_FOUND',
       statusCode: HttpStatus.NOT_FOUND,
     });
-
-
+    const mutexKey = `room_mutex:${roomId}`;
 
     try {
-      const available = await this.isRoomAvailable(roomId, checkIn, checkOut);
-      if (!available) {
+      return await this.cacheService.withMutex(mutexKey, async () => {
+        const available = await this.isRoomAvailable(roomId, checkIn, checkOut);
+        if (!available) {
+          throw new AppException({
+            message: 'Room already booked for this time range',
+            errorCode: 'ROOM_ALREADY_BOOKED',
+            statusCode: HttpStatus.CONFLICT,
+          });
+        }
+        const totalPrice = await this.calculateTotalPrice(roomId, checkIn, checkOut);
+        const bookingId = 'booking__' + this.utilsService.generateRandom(10, false);
+        const booking = new this.bookingModel({
+          room: roomId,
+          bookingId,
+          numberOfGuests: createBookingDto.numberOfGuests,
+          totalPrice,
+          note: createBookingDto.note,
+          userEmail,
+          userPhone,
+          checkInDate: checkIn,
+          checkOutDate: checkOut,
+        });
+
+        await booking.save();
+        this.logger.log(`Booking created with ID: ${bookingId}`);
+        this.logger.log(`Creating payment link for booking ID: ${bookingId} with amount: ${totalPrice}`);
+        // const result = await this.momoPaymentService.createLinkPayment2(totalPrice, bookingId, null, userEmail);
+
+        await this.cacheService.addToZaloPayQueue({
+          bookingId,
+          userEmail,
+          amount: totalPrice,
+        });
+        await this.cacheService.unlockRoom(roomId, checkIn, checkOut);
+        this.logger.log(`Booking created successfully with ID: ${booking._id}`);
+
+        const response = {
+          roomId: room._id,
+          checkInDate: booking.checkInDate,
+          checkOutDate: booking.checkOutDate,
+          totalPrice: booking.totalPrice,
+          status: booking.status,
+        };
+
+        return response;
+      }, { ttlMs: 15000, maxWaitMs: 2000 });
+    } catch (err) {
+      this.logger.error(`Error creating booking: ${err.message}`, err.stack);
+      if (err?.message === 'ROOM_BUSY') {
         throw new AppException({
-          message: 'Room already booked for this time range',
-          errorCode: 'ROOM_ALREADY_BOOKED',
+          message: 'Room is being processed, please try again shortly',
+          errorCode: 'ROOM_BUSY',
           statusCode: HttpStatus.CONFLICT,
         });
       }
-      const totalPrice = await this.calculateTotalPrice(roomId, checkIn, checkOut, createBookingDto.numberOfGuests);
-      const bookingId = 'booking__' + this.utilsService.generateRandom(10, false);
-      const booking = new this.bookingModel({
-        room: roomId,
-        bookingId,
-        numberOfGuests: createBookingDto.numberOfGuests,
-        totalPrice,
-        note: createBookingDto.note,
-        userEmail,
-        userPhone,
-        checkInDate: checkIn,
-        checkOutDate: checkOut,
-      });
-
-      await booking.save();
-      this.logger.log(`Booking created with ID: ${bookingId}`);
-      this.logger.log(`Creating payment link for booking ID: ${bookingId} with amount: ${totalPrice}`);
-      // const result = await this.momoPaymentService.createLinkPayment2(totalPrice, bookingId, null, userEmail);
-
-      await this.cacheService.addToZaloPayQueue({
-        bookingId,
-        userEmail,
-        amount: totalPrice,
-      });
-      // Unlock the room after booking
-      await this.cacheService.unlockRoom(roomId, checkIn, checkOut);
-      this.logger.log(`Booking created successfully with ID: ${booking._id}`);
-
-      const response = {
-        roomId: room._id,
-        checkInDate: booking.checkInDate,
-        checkOutDate: booking.checkOutDate,
-        totalPrice: booking.totalPrice,
-        status: booking.status,
-      };
-
-      return response;
-    } catch (err) {
-      this.logger.error(`Error creating booking: ${err.message}`, err.stack);
-      await this.cacheService.unlockRoom(roomId, checkIn, checkOut); // rollback lock
       throw err;
     }
   }
@@ -132,7 +140,7 @@ export class BookingService {
     return !overlap;
   }
 
-  async calculateTotalPrice(roomId: string, checkIn: Date, checkOut: Date, numberOfGuests: number): Promise<number> {
+  async calculateTotalPrice(roomId: string, checkIn: Date, checkOut: Date): Promise<number> {
     let room: any = null
     const cạchedRoom = await this.cacheService.getRoomDetailCacheById(roomId);
     if (cạchedRoom) {
@@ -152,9 +160,9 @@ export class BookingService {
     });
 
     const basePrice = room.priceByDay;
-    const duration = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24); // in days
+    const duration = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24);
     const roundedDuration = Math.ceil(duration);
-    return basePrice * roundedDuration * numberOfGuests;
+    return basePrice * roundedDuration;
   }
 
   async getAvailableRooms(
@@ -243,6 +251,25 @@ export class BookingService {
       status: booking.status,
       totalPrice: booking.totalPrice,
     }
+  }
+
+  private toVNDateAtHour(dateInput: string | Date, hour: number): Date {
+    dayjs.extend(utc);
+    dayjs.extend(timezone);
+    dayjs.extend(customParseFormat);
+
+    const VN_TZ = 'Asia/Ho_Chi_Minh';
+    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+      return dayjs.tz(`${dateInput} ${hour}:00`, 'YYYY-MM-DD HH:mm', VN_TZ)
+        .second(0).millisecond(0)
+        .toDate();
+    }
+
+    const asVN = dayjs(dateInput).tz(VN_TZ);
+    const ymd = asVN.format('YYYY-MM-DD');
+    return dayjs.tz(`${ymd} ${hour}:00`, 'YYYY-MM-DD HH:mm', VN_TZ)
+      .second(0).millisecond(0)
+      .toDate();
   }
 
 }

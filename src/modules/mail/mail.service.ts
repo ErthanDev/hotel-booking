@@ -9,7 +9,15 @@ export class MailService {
 
         private readonly mailerService: MailerService
     ) { }
-
+    formatDate(date: Date): string {
+        return date.toString();
+    }
+    formatPrice(price: number): string {
+        return price.toLocaleString('vi-VN', {
+            style: 'currency',
+            currency: 'VND'
+        });
+    }
     async sendVerificationEmail(to: string, otp: string) {
         const subject = 'Verify Your Email Address - OTP Code';
         const text = `
@@ -109,5 +117,28 @@ ${this.APP_NAME} Support Team
         }
     }
 
+
+    async sendMailBookingSuccess(to: string, checkInDate: Date, checkOutDate: Date, totalPrice: number, email: string, phone: string, roomType: string) {
+        this.logger.log(`Sending booking confirmation email to ${to}`);
+        const subject = 'Booking Confirmation - Infinity Stay';
+        const formattedCheckIn = this.formatDate(checkInDate);
+        const formattedCheckOut = this.formatDate(checkOutDate);
+        const formattedPrice = this.formatPrice(totalPrice);
+
+        await this.mailerService.sendMail({
+            to,
+            from: 'Infinity Stay Hotel',
+            subject,
+            template: 'mail-template',
+            context: {
+                checkInDate: formattedCheckIn,
+                checkOutDate: formattedCheckOut,
+                totalPrice: formattedPrice,
+                email,
+                phone,
+                roomType,
+            }
+        });
+    }
 
 }

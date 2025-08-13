@@ -7,6 +7,7 @@ import { Transaction, TransactionSchema } from '../transactions/schema/transacti
 import { Booking, BookingSchema } from '../booking/schema/booking.schema';
 import { UtilsModule } from '../utils/utils.module';
 import { TransactionsModule } from '../transactions/transactions.module';
+import { CacheModule } from '../cache/cache.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { TransactionsModule } from '../transactions/transactions.module';
     ]),
     UtilsModule,
     TransactionsModule,
+    CacheModule,
   ],
   controllers: [ZalopayController],
   providers: [ZalopayService],

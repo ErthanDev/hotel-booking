@@ -62,7 +62,16 @@ export class OtpProcessor extends WorkerHost {
 
 
     private async sendMailNotiPaymentSuccess(job: Job<any, any, string>) {
-        // await this.mailService.sendMailNotiPaymentSuccess(data);
+        const { to, checkInDate, checkOutDate, totalPrice, email, phone, roomType } = job.data;
+        await this.mailService.sendMailBookingSuccess(
+            to,
+            checkInDate,
+            checkOutDate,
+            totalPrice,
+            email,
+            phone,
+            roomType
+        );
     }
 
     private async sendMailNotiPaymentFailed(job: Job<any, any, string>) {

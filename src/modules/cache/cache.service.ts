@@ -15,6 +15,13 @@ type OtpValidationResult = {
 export class CacheService {
     private readonly OTP_TTL = 300;
     private readonly TTL = 60 * 60 * 24
+    private readonly UNLOCK_LUA = `
+    if redis.call("GET", KEYS[1]) == ARGV[1] then
+      return redis.call("DEL", KEYS[1])
+    else
+      return 0
+    end
+    `;
     constructor(
         @InjectRedis() private readonly redis: Redis,
         @InjectQueue('otp') private readonly otpQueue: Queue,
@@ -272,7 +279,44 @@ export class CacheService {
     }
 
 
-    async sendMailNotification(nameQueue:string, data: any) {
+    async sendMailNotification(nameQueue: string, data: any) {
         await this.mailNotificationQueue.add(nameQueue, data);
+    }
+
+
+
+    async acquireMutex(key: string, ttlMs = 15000): Promise<string | null> {
+        const token = crypto.randomUUID(); // Node ≥16
+        const ok = await this.redis.set(key, token, 'PX', ttlMs, 'NX');
+        return ok ? token : null;
+    }
+
+    async releaseMutex(key: string, token: string): Promise<void> {
+        await this.redis.eval(this.UNLOCK_LUA, 1, key, token);
+    }
+
+    private async spinAcquire(key: string, ttlMs: number, maxWaitMs: number): Promise<string> {
+        const deadline = Date.now() + maxWaitMs;
+        while (true) {
+            const token = await this.acquireMutex(key, ttlMs);
+            if (token) return token;
+            if (Date.now() > deadline) throw new Error('ROOM_BUSY');
+            await new Promise(r => setTimeout(r, 50 + Math.floor(Math.random() * 50)));
+        }
+    }
+
+    async withMutex<T>(
+        key: string,
+        fn: () => Promise<T>,
+        opts?: { ttlMs?: number; maxWaitMs?: number },
+    ): Promise<T> {
+        const ttlMs = opts?.ttlMs ?? 15000;
+        const maxWaitMs = opts?.maxWaitMs ?? 2000;
+        const token = await this.spinAcquire(key, ttlMs, maxWaitMs);
+        try {
+            return await fn();
+        } finally {
+            await this.releaseMutex(key, token);
+        }
     }
 }

@@ -11,6 +11,8 @@ import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { TransactionGateway } from '../transactions/gateway/transaction.gateway';
 import { Booking, BookingDocument } from '../booking/schema/booking.schema';
 import { OccupancyStatus } from 'src/constants/occupancy-status.enum';
+import { CacheService } from '../cache/cache.service';
+import { NAME_QUEUE } from 'src/constants/name-queue.enum';
 
 @Injectable()
 export class ZalopayService {
@@ -24,6 +26,7 @@ export class ZalopayService {
         private readonly httpService: HttpService,
         @InjectModel(Booking.name) private readonly bookingModel: Model<BookingDocument>,
         @InjectConnection() private readonly connection: Connection,
+        private readonly cacheService: CacheService,
     ) {
         this.config = {
             app_id: this.configService.get<string>('ZALOPAY_APP_ID'),
@@ -36,14 +39,29 @@ export class ZalopayService {
     async createZaloPayPayment(amount: number, bookingId: string, userEmail?: string) {
         const items = [{}];
         const transID = bookingId;
+
+
+        const booking = await this.bookingModel.findOne({ bookingId }).populate({ path: 'room', select: 'roomType -_id' }).lean().exec() as any;
+        if (!booking) {
+            throw new AppException({
+                message: `Booking with ID ${bookingId} not found`,
+                errorCode: 'BOOKING_NOT_FOUND',
+                statusCode: HttpStatus.NOT_FOUND,
+            });
+        }
         const embed_data = {
             redirecturl: this.configService.get<string>('ZALOPAY_REDIRECT_URL'),
-            transactionId: transID
-        };
+            transactionId: transID,
+            userEmail: booking.userEmail,
+            userPhone: booking.userPhone,
+            checkInDate: booking.checkInDate,
+            checkOutDate: booking.checkOutDate,
+            roomType: booking.room.roomType,
 
+        };
         const order = {
             app_id: this.config.app_id,
-            app_trans_id: `${moment().format('YYMMDD')}_${transID}`, // translation missing: vi.docs.shared.sample_code.comments.app_trans_id
+            app_trans_id: `${moment().format('YYMMDD')}_${transID}`,
             app_user: "Infinity Stay Hotel",
             app_time: Date.now(),
             item: JSON.stringify(items),
@@ -158,6 +176,16 @@ export class ZalopayService {
                     { bookingId: transaction.providerTransactionId },
                     { $set: { status: OccupancyStatus.CONFIRMED } }
                 );
+                await this.cacheService.sendMailNotification(NAME_QUEUE.SEND_MAIL_NOTI_PAYMENT_SUCCESS, {
+                    to: embedData['userEmail'],
+                    checkInDate: embedData['checkInDate'],
+                    checkOutDate: embedData['checkOutDate'],
+                    totalPrice: dataJson['amount'],
+                    email: embedData['userEmail'],
+                    phone: embedData['userPhone'],
+                    roomType: embedData['roomType']
+                })
+
             }
         } catch (ex) {
             this.logger.error(`ZaloPay callback error: ${ex.message}`, ex.stack)
