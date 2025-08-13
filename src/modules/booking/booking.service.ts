@@ -131,7 +131,7 @@ export class BookingService {
   async isRoomAvailable(roomId: string, checkIn: Date, checkOut: Date): Promise<boolean> {
     const overlap = await this.bookingModel.findOne({
       room: roomId,
-      status: { $in: [OccupancyStatus.PENDING, OccupancyStatus.CONFIRMED] },
+      status: { $in: [OccupancyStatus.PENDING, OccupancyStatus.CONFIRMED, OccupancyStatus.PAYMENT_URL, OccupancyStatus.CHECKED_IN] },
       $or: [
         {
           checkInDate: { $lt: checkOut },

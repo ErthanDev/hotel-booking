@@ -27,7 +27,6 @@ export class CacheService {
         @InjectQueue('otp') private readonly otpQueue: Queue,
         @InjectQueue('payment') private readonly paymentQueue: Queue,
         @InjectQueue('mail-notification') private readonly mailNotificationQueue: Queue,
-        // @InjectQueue('momo-payment') private
     ) { }
 
     async generateOtp(
@@ -93,7 +92,6 @@ export class CacheService {
             return { success: true };
         }
 
-        // Xử lý sai
         let failCount = parseInt((await this.redis.get(failCountKey)) || '0');
         failCount++;
         await this.redis.set(failCountKey, failCount, 'EX', 3600);

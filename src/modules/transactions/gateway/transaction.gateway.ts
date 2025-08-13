@@ -14,8 +14,6 @@ export class TransactionGateway implements OnGatewayConnection, OnGatewayInit {
 
     handleConnection(@ConnectedSocket() client: Socket) {
         this.logger.log(`Client connected: ${client.id}`);
-
-
     }
 
 
