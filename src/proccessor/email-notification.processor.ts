@@ -35,13 +35,13 @@ export class EmailNotiProcessor extends WorkerHost {
         try {
             switch (job.name) {
                 case NAME_QUEUE.SEND_MAIL_NOTI_PAYMENT_SUCCESS:
-                    await this.sendMailNotiPaymentSuccess(job.data);
+                    await this.sendMailNotiPaymentSuccess(job);
                     break;
                 case NAME_QUEUE.SEND_MAIL_NOTI_PAYMENT_FAILED:
-                    await this.sendMailNotiPaymentFailed(job.data);
+                    await this.sendMailNotiPaymentFailed(job);
                     break;
                 case NAME_QUEUE.SEND_MAIL_NOTI_NEARLY_CHECKIN:
-                    await this.sendMailNotiNearlyCheckIn(job.data);
+                    await this.sendMailNotiNearlyCheckIn(job);
                     break;
                 default:
                     this.logger.warn(`No handler found for job: ${job.name}`);
