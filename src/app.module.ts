@@ -23,6 +23,7 @@ import { TelegramModule } from './modules/telegram/telegram.module';
 import { TelegramCron } from './cron/telegram-cron';
 import { ZalopayModule } from './modules/zalopay/zalopay.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { EmailNotiProcessor } from './proccessor/email-notification.processor';
 
 @Module({
   imports: [
@@ -77,6 +78,6 @@ import { ChatModule } from './modules/chat/chat.module';
     ChatModule,
   ],
   controllers: [AppController],
-  providers: [AppService, OtpProcessor, TransactionProcessor, BookingCron, TelegramCron],
+  providers: [AppService, OtpProcessor, TransactionProcessor, BookingCron, TelegramCron, EmailNotiProcessor],
 })
 export class AppModule { }

@@ -6,8 +6,8 @@ import { MailService } from 'src/modules/mail/mail.service';
 
 
 @Processor('mail-notification')
-export class OtpProcessor extends WorkerHost {
-    private readonly logger = new Logger(OtpProcessor.name);
+export class EmailNotiProcessor extends WorkerHost {
+    private readonly logger = new Logger(EmailNotiProcessor.name);
 
     constructor(
         private readonly mailService: MailService,
