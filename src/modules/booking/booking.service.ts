@@ -115,6 +115,7 @@ export class BookingService {
           checkOutDate: booking.checkOutDate,
           totalPrice: booking.totalPrice,
           status: booking.status,
+          bookingId: booking.bookingId,
         };
 
         return response;
