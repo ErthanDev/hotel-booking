@@ -218,7 +218,10 @@ export class BookingService {
   async cancelBooking(bookingId: string): Promise<void> {
     this.logger.log(`Cancelling booking with ID: ${bookingId}`);
 
-    const booking = await this.bookingModel.findOne({ bookingId });
+    const booking = await this.bookingModel.findOne({ bookingId }).populate({
+      path: 'room',
+      select: 'roomType -_id',
+    }) as any;
     if (!booking) {
       throw new AppException({
         message: `Booking with ID ${bookingId} not found`,
@@ -247,6 +250,16 @@ export class BookingService {
     booking.status = OccupancyStatus.CANCELED;
     await booking.save();
     this.cacheService.cancelTransaction(booking.bookingId);
+    await this.cacheService.sendMailNotification(NAME_QUEUE.SEND_MAIL_NOTI_BOOKING_CANCELLED, {
+      to: booking.userEmail,
+      bookingId: booking.bookingId,
+      checkInDate: booking.checkInDate.toISOString(),
+      checkOutDate: booking.checkOutDate.toISOString(),
+      totalPrice: booking.totalPrice,
+      email: booking.userEmail,
+      phone: booking.userPhone,
+      roomType: booking.room.roomType,
+    });
     this.logger.log(`Booking with ID ${bookingId} cancelled successfully`);
   }
 
@@ -258,7 +271,7 @@ export class BookingService {
       return cachedBooking;
     }
 
-    const booking = await this.bookingModel.findOne({ bookingId, status: OccupancyStatus.PAYMENT_URL }).populate({ path: 'room', select: 'roomType -_id' }).lean() as any;
+    const booking = await this.bookingModel.findOne({ bookingId, status: OccupancyStatus.PAYMENT_URL }).lean() as any;
     if (!booking) {
       throw new AppException({
         message: `Booking with ID ${bookingId} not found`,
@@ -271,16 +284,6 @@ export class BookingService {
       status: booking.status,
       totalPrice: booking.totalPrice,
     });
-    await this.cacheService.sendMailNotification(NAME_QUEUE.SEND_MAIL_NOTI_BOOKING_CANCELLED, {
-      to: booking.userEmail,
-      bookingId: booking.bookingId,
-      checkInDate: booking.checkInDate.toISOString(),
-      checkOutDate: booking.checkOutDate.toISOString(),
-      totalPrice: booking.totalPrice,
-      email: booking.userEmail,
-      phone: booking.userPhone,
-      roomType: booking.room.roomType,
-    })
 
     return {
       paymentUrl: booking.paymentUrl,
