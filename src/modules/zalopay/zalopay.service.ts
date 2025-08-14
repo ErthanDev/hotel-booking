@@ -36,28 +36,20 @@ export class ZalopayService {
         };
     }
 
-    async createZaloPayPayment(amount: number, bookingId: string, userEmail?: string) {
+    async createZaloPayPayment(amount: number, bookingId: string, userEmail?: string, userPhone?: string, checkInDate?: Date, checkOutDate?: Date, roomId?: string): Promise<any> {
         const items = [{}];
         const transID = bookingId;
 
 
-        const booking = await this.bookingModel.findOne({ bookingId }).populate({ path: 'room', select: 'roomType -_id' }).lean().exec() as any;
-        if (!booking) {
-            throw new AppException({
-                message: `Booking with ID ${bookingId} not found`,
-                errorCode: 'BOOKING_NOT_FOUND',
-                statusCode: HttpStatus.NOT_FOUND,
-            });
-        }
+
         const embed_data = {
             redirecturl: this.configService.get<string>('ZALOPAY_REDIRECT_URL'),
             transactionId: transID,
-            userEmail: booking.userEmail,
-            userPhone: booking.userPhone,
-            checkInDate: booking.checkInDate,
-            checkOutDate: booking.checkOutDate,
-            roomType: booking.room.roomType,
-
+            userEmail: userEmail,
+            userPhone: userPhone,
+            checkInDate: checkInDate,
+            checkOutDate: checkOutDate,
+            roomId: roomId,
         };
         const order = {
             app_id: this.config.app_id,
@@ -183,7 +175,7 @@ export class ZalopayService {
                     totalPrice: dataJson['amount'],
                     email: embedData['userEmail'],
                     phone: embedData['userPhone'],
-                    roomType: embedData['roomType']
+                    roomId: embedData['roomId']
                 })
 
             }

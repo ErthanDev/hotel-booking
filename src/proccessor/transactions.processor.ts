@@ -61,10 +61,15 @@ export class TransactionProcessor extends WorkerHost {
   }
 
   private async handleCreatePaymentUrl(job: Job<any, any, string>) {
-    const { bookingId, userEmail, amount, session } = job.data;
+    const { bookingId, userEmail, amount,
+      userPhone,
+      checkInDate,
+      checkOutDate,
+      roomId,
+      amount: totalPrice, } = job.data;
     this.logger.log(`Creating payment link for booking ID: ${bookingId} with amount: ${amount}`);
 
-    const result = await this.zalopayService.createZaloPayPayment(amount, bookingId, userEmail);
+    const result = await this.zalopayService.createZaloPayPayment(amount, bookingId, userEmail, userPhone, checkInDate, checkOutDate, roomId);
     this.logger.log(`Payment link created successfully: ${result.order_url}`);
     return result;
 

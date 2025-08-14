@@ -319,4 +319,18 @@ export class CacheService {
             await this.releaseMutex(key, token);
         }
     }
+
+    async getUrlPaymentByBookingId(bookingId: string) {
+        const key = `payment:url:${bookingId}`;
+        const cachedData = await this.redis.get(key);
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+        return null;
+    }
+
+    async setUrlPaymentByBookingId(bookingId: string, data: any) {
+        const key = `payment:url:${bookingId}`;
+        await this.redis.set(key, JSON.stringify(data), 'EX', 300);
+    }
 }

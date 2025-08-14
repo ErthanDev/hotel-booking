@@ -43,6 +43,9 @@ export class EmailNotiProcessor extends WorkerHost {
                 case NAME_QUEUE.SEND_MAIL_NOTI_NEARLY_CHECKIN:
                     await this.sendMailNotiNearlyCheckIn(job);
                     break;
+                case NAME_QUEUE.SEND_MAIL_NOTI_BOOKING_CANCELLED:
+                    await this.sendMailNotiBookingCancelled(job);
+                    break;
                 default:
                     this.logger.warn(`No handler found for job: ${job.name}`);
             }
@@ -63,7 +66,7 @@ export class EmailNotiProcessor extends WorkerHost {
 
     private async sendMailNotiPaymentSuccess(job: Job<any, any, string>) {
         this.logger.debug(`Sending payment success email for job ID: ${job.id}`);
-        const { to, checkInDate, checkOutDate, totalPrice, email, phone, roomType } = job.data;
+        const { to, checkInDate, checkOutDate, totalPrice, email, phone, roomId } = job.data;
         await this.mailService.sendMailBookingSuccess(
             to,
             checkInDate,
@@ -71,7 +74,7 @@ export class EmailNotiProcessor extends WorkerHost {
             totalPrice,
             email,
             phone,
-            roomType
+            roomId
         );
     }
 
@@ -81,5 +84,19 @@ export class EmailNotiProcessor extends WorkerHost {
 
     private async sendMailNotiNearlyCheckIn(job: Job<any, any, string>) {
 
+    }
+
+    private async sendMailNotiBookingCancelled(job: Job<any, any, string>) {
+        this.logger.debug(`Sending booking cancellation email for job ID: ${job.id}`);
+        const { to, checkInDate, checkOutDate, totalPrice, email, phone, roomType } = job.data;
+        await this.mailService.sendMailBookingCancel(
+            to,
+            checkInDate,
+            checkOutDate,
+            totalPrice,
+            email,
+            phone,
+            roomType
+        );
     }
 }

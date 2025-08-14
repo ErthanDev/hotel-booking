@@ -12,6 +12,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import { NAME_QUEUE } from 'src/constants/name-queue.enum';
 @Injectable()
 export class BookingService {
   private readonly logger = new Logger(BookingService.name);
@@ -95,11 +96,14 @@ export class BookingService {
         await booking.save();
         this.logger.log(`Booking created with ID: ${bookingId}`);
         this.logger.log(`Creating payment link for booking ID: ${bookingId} with amount: ${totalPrice}`);
-        // const result = await this.momoPaymentService.createLinkPayment2(totalPrice, bookingId, null, userEmail);
 
         await this.cacheService.addToZaloPayQueue({
           bookingId,
           userEmail,
+          userPhone,
+          checkInDate: checkIn,
+          checkOutDate: checkOut,
+          roomId,
           amount: totalPrice,
         });
         await this.cacheService.unlockRoom(roomId, checkIn, checkOut);
@@ -240,7 +244,13 @@ export class BookingService {
 
   async getPaymentUrl(bookingId: string) {
     this.logger.log(`Retrieving payment URL for booking ID: ${bookingId}`);
-    const booking = await this.bookingModel.findOne({ bookingId, status: OccupancyStatus.PAYMENT_URL }).lean();
+    const cachedBooking = await this.cacheService.getUrlPaymentByBookingId(bookingId);
+    if (cachedBooking) {
+      this.logger.debug(`Returning cached payment URL for booking ID ${bookingId}`);
+      return cachedBooking;
+    }
+
+    const booking = await this.bookingModel.findOne({ bookingId, status: OccupancyStatus.PAYMENT_URL }).populate({ path: 'room', select: 'roomType -_id' }).lean() as any;
     if (!booking) {
       throw new AppException({
         message: `Booking with ID ${bookingId} not found`,
@@ -248,6 +258,21 @@ export class BookingService {
         statusCode: HttpStatus.NOT_FOUND,
       });
     }
+    await this.cacheService.setUrlPaymentByBookingId(bookingId, {
+      paymentUrl: booking.paymentUrl,
+      status: booking.status,
+      totalPrice: booking.totalPrice,
+    });
+    await this.cacheService.sendMailNotification(NAME_QUEUE.SEND_MAIL_NOTI_BOOKING_CANCELLED, {
+      to: booking.userEmail,
+      bookingId: booking.bookingId,
+      checkInDate: booking.checkInDate.toISOString(),
+      checkOutDate: booking.checkOutDate.toISOString(),
+      totalPrice: booking.totalPrice,
+      email: booking.userEmail,
+      phone: booking.userPhone,
+      roomType: booking.room.roomType,
+    })
 
     return {
       paymentUrl: booking.paymentUrl,

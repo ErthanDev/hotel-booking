@@ -5,6 +5,8 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigService } from '@nestjs/config';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { join } from 'path';
+import { MongooseModule } from '@nestjs/mongoose';
+import { Room, RoomSchema } from '../rooms/schema/room.schema';
 
 @Module({
   imports: [
@@ -30,6 +32,9 @@ import { join } from 'path';
       }),
       inject: [ConfigService],
     }),
+    MongooseModule.forFeature([
+      { name: Room.name, schema: RoomSchema }
+    ]),
   ],
   controllers: [MailController],
   providers: [MailService],

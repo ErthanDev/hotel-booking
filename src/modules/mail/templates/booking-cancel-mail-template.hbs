@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hủy đặt phòng - Infinity Stay</title>
+</head>
+
+<body style="margin:0;padding:0;font-family:Arial, sans-serif;background-color:#0f1027;color:#f8fafc;">
+    <div style="width:100%;max-width:600px;margin:0 auto;background-color:#1a1b3a;border-radius:16px;overflow:hidden;">
+
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#ef4444 0%,#f97316 100%);padding:40px 30px;text-align:center;">
+            <h1 style="margin:0;font-size:32px;font-weight:bold;color:#ffffff;">❌ Hủy đặt phòng</h1>
+            <p style="margin:10px 0 0 0;font-size:18px;color:rgba(255,255,255,0.9);">
+                Yêu cầu hủy của bạn đã được xác nhận
+            </p>
+        </div>
+
+        <div style="padding:40px 30px;">
+
+            <!-- Booking summary -->
+            <div
+                style="background-color:#1e1f3f;border:1px solid #2d2e5f;border-radius:12px;padding:30px;margin-bottom:30px;">
+
+                <div style="margin-bottom:15px;">
+                    <div style="color:#9ca3af;font-size:14px;margin-bottom:5px;">Loại phòng</div>
+                    <div style="color:#f8fafc;font-size:16px;font-weight:600;">{{roomType}}</div>
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <div style="color:#9ca3af;font-size:14px;margin-bottom:5px;">Email</div>
+                    <div style="color:#f8fafc;font-size:16px;font-weight:600;">{{email}}</div>
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <div style="color:#9ca3af;font-size:14px;margin-bottom:5px;">Số điện thoại</div>
+                    <div style="color:#f8fafc;font-size:16px;font-weight:600;">{{phone}}</div>
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <div style="color:#9ca3af;font-size:14px;margin-bottom:5px;">Ngày nhận phòng (dự kiến)</div>
+                    <div style="color:#f8fafc;font-size:16px;font-weight:600;">{{checkInDate}}</div>
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <div style="color:#9ca3af;font-size:14px;margin-bottom:5px;">Ngày trả phòng (dự kiến)</div>
+                    <div style="color:#f8fafc;font-size:16px;font-weight:600;">{{checkOutDate}}</div>
+                </div>
+
+
+            </div>
+
+            <!-- Refund / fee -->
+            <div style="background-color:#2d2e5f;padding:20px;border-radius:8px;margin:20px 0;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <div style="color:#d1d5db;">Số tiền hoàn lại</div>
+                    <div style="font-size:22px;font-weight:bold;color:#10b981;">{{totalPrice}}</div>
+                </div>
+
+            </div>
+
+
+            <!-- Policy -->
+            <div
+                style="background-color:#1e1f3f;border:1px solid #6366f1;border-radius:8px;padding:20px;margin:20px 0;">
+                <div style="color:#6366f1;font-weight:bold;margin-bottom:15px;">📋 Chính sách hủy</div>
+                <div style="margin-bottom:10px;color:#d1d5db;">• Hủy trước 48 giờ: hoàn tiền theo chính sách hiện hành
+                </div>
+                <div style="margin-bottom:10px;color:#d1d5db;">• Hủy trong vòng 48 giờ: có thể áp dụng phí hủy</div>
+                <div style="margin-bottom:10px;color:#d1d5db;">• Một số chương trình khuyến mãi có điều kiện hoàn tiền
+                    riêng</div>
+                <div style="margin-bottom:10px;color:#d1d5db;">• Mọi thắc mắc vui lòng liên hệ lễ tân để được hỗ trợ
+                </div>
+            </div>
+
+            <!-- CTA: rebook -->
+            <div style="text-align:center;margin:30px 0;">
+                <a href="{{rebookUrl}}"
+                    style="display:inline-block;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);padding:12px 20px;border-radius:10px;color:#ffffff;text-decoration:none;font-weight:bold;">
+                    🔁 Đặt lại phòng
+                </a>
+            </div>
+
+            <!-- Contact -->
+            <div style="background-color:#2d2e5f;border-radius:8px;padding:20px;margin:20px 0;">
+                <div style="color:#f59e0b;font-weight:bold;margin-bottom:15px;">📞 Thông tin liên hệ</div>
+                <div style="margin-bottom:8px;color:#d1d5db;">📍 123 Đường Luxury, Quận 1, TP.HCM</div>
+                <div style="margin-bottom:8px;color:#d1d5db;">☎️ Hotline: +84 28 1234 5678</div>
+                <div style="margin-bottom:8px;color:#d1d5db;">✉️ Email: concierge@infinitystay.vn</div>
+                <div style="margin-bottom:8px;color:#d1d5db;">🌐 Website: www.infinitystay.vn</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color:#0f1027;padding:30px;text-align:center;color:#9ca3af;">
+            <div style="margin-bottom:20px;">
+                <strong>Infinity Stay</strong><br />
+                Where comfort meets infinity
+            </div>
+
+            <div style="margin:20px 0;">
+                <a href="#" style="display:inline-block;margin:0 10px;color:#6366f1;text-decoration:none;">Facebook</a>
+                <a href="#" style="display:inline-block;margin:0 10px;color:#6366f1;text-decoration:none;">Instagram</a>
+                <a href="#" style="display:inline-block;margin:0 10px;color:#6366f1;text-decoration:none;">Twitter</a>
+            </div>
+
+            <div>
+                © 2024 Infinity Stay. All rights reserved.<br />
+                Bạn nhận được email này vì đã yêu cầu hủy đặt phòng tại khách sạn của chúng tôi.
+            </div>
+        </div>
+
+    </div>
+</body>
+
+</html>
