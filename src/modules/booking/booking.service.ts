@@ -133,6 +133,11 @@ export class BookingService {
   }
 
   async isRoomAvailable(roomId: string, checkIn: Date, checkOut: Date): Promise<boolean> {
+    const checkInDate = new Date(checkIn);
+    checkInDate.setUTCHours(3, 0, 0, 0);
+
+    const checkOutDate = new Date(checkOut);
+    checkOut.setUTCHours(5, 0, 0, 0);
     const overlap = await this.bookingModel.findOne({
       room: roomId,
       status: { $in: [OccupancyStatus.PENDING, OccupancyStatus.CONFIRMED, OccupancyStatus.PAYMENT_URL, OccupancyStatus.CHECKED_IN] },
@@ -183,7 +188,9 @@ export class BookingService {
   ) {
     const skip = (page - 1) * limit;
     const start = new Date(startDate);
+    start.setUTCHours(3, 0, 0, 0);
     const end = new Date(endDate);
+    end.setUTCHours(5, 0, 0, 0);
     const overlappingBookings = await this.bookingModel.find({
       status: { $in: [OccupancyStatus.CONFIRMED, OccupancyStatus.PENDING] },
       $or: [
