@@ -1,7 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { BookingService } from './booking.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
-import { UpdateBookingDto } from './dto/update-booking.dto';
 import { User } from 'src/decorators/user-infor.decorator';
 import type { IUser } from '../users/user.interface';
 import { ResponseMessage } from 'src/decorators/response-message.decorator';
@@ -30,10 +29,15 @@ export class BookingController {
     return this.bookingService.getAvailableRooms(checkInDate, checkOutDate, maxPrice, numberOfGuests, roomType, limit, page);
   }
 
-  @Get(':bookingId/payment-url')
+  @Get('/:bookingId/payment-url')
   @ResponseMessage('Payment URL retrieved successfully')
   async getPaymentUrl(@Param('bookingId') bookingId: string) {
     return this.bookingService.getPaymentUrl(bookingId);
   }
+
+  @Patch('cancel/:bookingId')
+  @ResponseMessage('Booking cancelled successfully')
+  async cancelBooking(@Param('bookingId') bookingId: string) {
+    return this.bookingService.cancelBooking(bookingId);
+  }
 }
- 
