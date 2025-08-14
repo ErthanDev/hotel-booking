@@ -47,7 +47,7 @@ export class BookingService {
     checkIn.setUTCHours(3, 0, 0, 0);
 
     const checkOut = new Date(checkOutDate);
-    checkOut.setUTCHours(5, 0, 0, 0);
+    checkOut.setUTCHours(2, 0, 0, 0);
 
     this.logger.log(`Booking details: Room ID: ${roomId}, Check-in: ${checkIn}, Check-out: ${checkOut}, User Email: ${userEmail}, User Phone: ${userPhone}`);
     let room: any = null
@@ -137,7 +137,7 @@ export class BookingService {
     checkInDate.setUTCHours(3, 0, 0, 0);
 
     const checkOutDate = new Date(checkOut);
-    checkOut.setUTCHours(5, 0, 0, 0);
+    checkOut.setUTCHours(2, 0, 0, 0);
     const overlap = await this.bookingModel.findOne({
       room: roomId,
       status: { $in: [OccupancyStatus.PENDING, OccupancyStatus.CONFIRMED, OccupancyStatus.PAYMENT_URL, OccupancyStatus.CHECKED_IN] },
@@ -190,7 +190,7 @@ export class BookingService {
     const start = new Date(startDate);
     start.setUTCHours(3, 0, 0, 0);
     const end = new Date(endDate);
-    end.setUTCHours(5, 0, 0, 0);
+    end.setUTCHours(2, 0, 0, 0);
     const overlappingBookings = await this.bookingModel.find({
       status: { $in: [OccupancyStatus.CONFIRMED, OccupancyStatus.PENDING] },
       $or: [
