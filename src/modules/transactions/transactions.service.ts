@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { Transaction, TransactionDocument, TransactionStatus } from './schema/transaction.schema';
+import { PaymentMethod, Transaction, TransactionDocument, TransactionStatus } from './schema/transaction.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Booking, BookingDocument } from '../booking/schema/booking.schema';
@@ -110,5 +110,19 @@ export class TransactionsService {
       { $set: { status: TransactionStatus.CANCELLED } },
     );
     this.logger.log(`Transaction ${providerTransactionId} cancelled successfully.`);
+  }
+
+  async createTransactionWithCashMethod(bookingId: string, totalPrice: number, method: PaymentMethod): Promise<Transaction> {
+    this.logger.log(`Creating transaction with cash method for booking ID: ${bookingId}`);
+    const newTransaction = new this.transactionModel({
+      providerTransactionId: bookingId,
+      amount: totalPrice,
+      status: TransactionStatus.SUCCESS,
+      method,
+    });
+
+    const savedTransaction = await newTransaction.save();
+    this.logger.log(`Transaction created successfully with ID: ${savedTransaction._id}`);
+    return savedTransaction;
   }
 }

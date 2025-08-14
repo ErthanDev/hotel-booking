@@ -4,6 +4,9 @@ import { CreateBookingDto } from './dto/create-booking.dto';
 import { User } from 'src/decorators/user-infor.decorator';
 import type { IUser } from '../users/user.interface';
 import { ResponseMessage } from 'src/decorators/response-message.decorator';
+import { Roles } from 'src/decorators/roles.decorator';
+import { UserRole } from 'src/constants/user-role';
+import { CreateBookingDtoByAdminDto } from './dto/create-booking-by-admin.dto';
 
 @Controller('booking')
 export class BookingController {
@@ -39,5 +42,12 @@ export class BookingController {
   @ResponseMessage('Booking cancelled successfully')
   async cancelBooking(@Param('bookingId') bookingId: string) {
     return this.bookingService.cancelBooking(bookingId);
+  }
+
+  @Post('create-booking-by-admin')
+  @ResponseMessage('Booking created by admin successfully')
+  @Roles(UserRole.ADMIN)
+  async createBookingByAdmin(@Body() createBookingDto: CreateBookingDtoByAdminDto) {
+    return this.bookingService.createBookingByAdmin(createBookingDto);
   }
 }

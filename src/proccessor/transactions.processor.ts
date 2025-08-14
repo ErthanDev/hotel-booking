@@ -43,6 +43,9 @@ export class TransactionProcessor extends WorkerHost {
         case NAME_QUEUE.CANCEL_TRANSACTION:
           await this.cancelTransaction(job);
           break
+        case NAME_QUEUE.CREATE_TRANSACTION:
+          await this.createTransaction(job);
+          break;
         default:
           this.logger.warn(`No handler found for job: ${job.name}`);
       }
@@ -66,7 +69,7 @@ export class TransactionProcessor extends WorkerHost {
       checkInDate,
       checkOutDate,
       roomId,
-      amount: totalPrice, } = job.data;
+    } = job.data;
     this.logger.log(`Creating payment link for booking ID: ${bookingId} with amount: ${amount}`);
 
     const result = await this.zalopayService.createZaloPayPayment(amount, bookingId, userEmail, userPhone, checkInDate, checkOutDate, roomId);
@@ -79,5 +82,12 @@ export class TransactionProcessor extends WorkerHost {
     const { providerTransactionId } = job.data;
     this.logger.log(`Cancelling transaction with ID: ${providerTransactionId}`);
     const transaction = await this.transactionService.cancelTransaction(providerTransactionId);
+  }
+
+  private async createTransaction(job: Job<any, any, string>) {
+    const { bookingId, totalPrice, method } = job.data;
+    this.logger.log(`Creating transaction for booking ID: ${bookingId} with total price: ${totalPrice} and method: ${method}`);
+
+    return await this.transactionService.createTransactionWithCashMethod(bookingId, totalPrice, method);
   }
 }

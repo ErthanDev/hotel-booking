@@ -12,10 +12,11 @@ export enum TransactionStatus {
 }
 
 export enum PaymentMethod {
-    WALLET = 'WALLET',
     ZALOPAY = 'ZALOPAY',
     MOMO = 'MOMO',
-    VNPAY = 'VNPAY',
+    BANK_TRANSFER = 'BANK_TRANSFER',
+    CASH_ON_DELIVERY = 'CASH_ON_DELIVERY',
+
 }
 
 @Schema({ timestamps: true, collection: 'transactions' })

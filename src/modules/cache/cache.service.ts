@@ -4,6 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 import { NAME_QUEUE } from 'src/constants/name-queue.enum';
+import { PaymentMethod } from '../transactions/schema/transaction.schema';
 
 
 type OtpValidationResult = {
@@ -332,5 +333,15 @@ export class CacheService {
     async setUrlPaymentByBookingId(bookingId: string, data: any) {
         const key = `payment:url:${bookingId}`;
         await this.redis.set(key, JSON.stringify(data), 'EX', 300);
+    }
+
+    async createTransaction(bookingId: string, totalPrice: number, method: PaymentMethod): Promise<void> {
+        await this.paymentQueue.add(`${NAME_QUEUE.CREATE_TRANSACTION}`, {
+            bookingId,
+            totalPrice,
+            method,
+        }, {
+            removeOnFail: false,
+        });
     }
 }
