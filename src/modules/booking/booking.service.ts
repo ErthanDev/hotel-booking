@@ -137,14 +137,14 @@ export class BookingService {
     checkInDate.setUTCHours(3, 0, 0, 0);
 
     const checkOutDate = new Date(checkOut);
-    checkOut.setUTCHours(2, 0, 0, 0);
+    checkOutDate.setUTCHours(2, 0, 0, 0);
     const overlap = await this.bookingModel.findOne({
       room: roomId,
       status: { $in: [OccupancyStatus.PENDING, OccupancyStatus.CONFIRMED, OccupancyStatus.PAYMENT_URL, OccupancyStatus.CHECKED_IN] },
       $or: [
         {
-          checkInDate: { $lt: checkOut },
-          checkOutDate: { $gt: checkIn },
+          checkInDate: { $lt: checkOutDate },
+          checkOutDate: { $gt: checkInDate },
         },
       ],
     });
