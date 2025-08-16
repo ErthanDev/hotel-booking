@@ -45,7 +45,7 @@ export class AuthService {
 
 
   async register(payload: RegisterDto) {
-    const { email, password, address, confirmPassword, firstName, lastName, phoneNumber } = payload;
+    const { email, password, confirmPassword, firstName, lastName, phoneNumber } = payload;
     const existingUser = await this.userModel.findOne({ email }).lean();
     if (existingUser) {
       throw new AppException({
@@ -64,7 +64,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = new this.userModel({
-      email, password: hashedPassword, address, firstName, lastName, phoneNumber
+      email, password: hashedPassword, firstName, lastName, phoneNumber
     });
     await this.sendOtp(email);
     return user.save();

@@ -25,8 +25,7 @@ export class User {
     @Prop({ required: true })
     phoneNumber: string;
 
-    @Prop({ required: true })
-    address: string;
+ 
 
     @Prop({ enum: UserRole, default: UserRole.USER })
     role: UserRole;

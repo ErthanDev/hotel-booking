@@ -24,8 +24,5 @@ export class RegisterDto {
     @IsNotEmpty()
     phoneNumber: string;
 
-    @IsString()
-    @IsNotEmpty()
-    address: string;
 
 }
