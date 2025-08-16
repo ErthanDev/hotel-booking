@@ -6,6 +6,8 @@ import { Conversation, ConversationSchema } from './schema/conversation.schema';
 import { Message, MessageSchema } from './schema/message.schema';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ChatController } from './chat.controller';
+import { CacheModule } from '../cache/cache.module';
 
 @Module({
   imports: [
@@ -23,7 +25,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       }),
       inject: [ConfigService],
     }),
+
+    CacheModule
   ],
+  controllers: [ChatController],
   providers: [ChatGateway, ChatService],
 })
 export class ChatModule { }

@@ -344,4 +344,67 @@ export class CacheService {
             removeOnFail: false,
         });
     }
+
+
+
+    private convListKey(adminEmail: string, q: string | undefined, page: number, limit: number, version: number) {
+        const qPart = q ? Buffer.from(q).toString('base64') : 'noq';
+        return `chat:convlist:${adminEmail}:${version}:${qPart}:${page}:${limit}`;
+    }
+
+    async getAdminConvListCache(adminEmail: string, q: string | undefined, page: number, limit: number) {
+        const ver = await this.getVersionCache(`chat:convlist:${adminEmail}`);
+        const key = this.convListKey(adminEmail, q, page, limit, ver);
+        const raw = await this.redis.get(key);
+        return raw ? JSON.parse(raw) : null;
+    }
+
+    async setAdminConvListCache(adminEmail: string, q: string | undefined, page: number, limit: number, data: any) {
+        const ver = await this.getVersionCache(`chat:convlist:${adminEmail}`);
+        const key = this.convListKey(adminEmail, q, page, limit, ver);
+        // TTL ngắn để luôn tươi (10–20s)
+        await this.redis.set(key, JSON.stringify(data), 'EX', 15);
+    }
+
+    async invalidateAdminConvListCache(adminEmail: string) {
+        await this.increaseVersionCache(`chat:convlist:${adminEmail}`);
+    }
+
+    // ---- Unread counters per conversation ----
+    private unreadKey(convId: string, side: 'admin' | 'user') {
+        return `chat:unread:${convId}:${side}`;
+    }
+
+    async incrUnread(convId: string, side: 'admin' | 'user', delta = 1) {
+        await this.redis.incrby(this.unreadKey(convId, side), delta);
+    }
+
+    async resetUnread(convId: string, side: 'admin' | 'user') {
+        await this.redis.set(this.unreadKey(convId, side), '0');
+    }
+
+    async getUnread(convId: string, side: 'admin' | 'user'): Promise<number | null> {
+        const val = await this.redis.get(this.unreadKey(convId, side));
+        return val == null ? null : parseInt(val, 10);
+    }
+
+    // ---- Latest messages page cache ----
+    private latestMsgsKey(convId: string, limit: number) {
+        return `chat:msgs:latest:${convId}:${limit}`;
+    }
+
+    async getLatestMsgsCache(convId: string, limit: number) {
+        const raw = await this.redis.get(this.latestMsgsKey(convId, limit));
+        return raw ? JSON.parse(raw) : null;
+    }
+
+    async setLatestMsgsCache(convId: string, limit: number, data: any) {
+        // TTL rất ngắn để tránh stale khi chat sôi động
+        await this.redis.set(this.latestMsgsKey(convId, limit), JSON.stringify(data), 'EX', 10);
+    }
+
+    async invalidateLatestMsgsCache(convId: string) {
+        // đơn giản: xóa theo các limit phổ biến; hoặc bỏ qua, vì TTL ngắn
+        // tuỳ bạn: await this.redis.del(this.latestMsgsKey(convId, 30));
+    }
 }

@@ -36,4 +36,5 @@ export class Conversation {
 }
 
 export const ConversationSchema = SchemaFactory.createForClass(Conversation);
-ConversationSchema.index({ userEmail: 1 }, { unique: true });
+ConversationSchema.index({ adminEmail: 1, 'lastMessage.at': -1, _id: -1 });
+ConversationSchema.index({ userEmail: 1, adminEmail: 1 });

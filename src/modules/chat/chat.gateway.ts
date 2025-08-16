@@ -12,7 +12,7 @@ import { UserRole } from 'src/constants/user-role';
 import { AppException } from 'src/common/exception/app.exception';
 
 
-@WebSocketGateway({ namespace: '/chat', cors: { origin: '*' } })
+@WebSocketGateway({ namespace: '/chat', cors: { origin: '*' }, transports: ['websocket'] })
 @UseGuards(WsJwtGuard)
 export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
@@ -63,10 +63,13 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   }
 
   handleDisconnect(client: Socket) {
-    // noop, bạn có thể phát 'presence' ở đây
+    this.logger.log(`Client disconnected: ${client.id}`);
+    const user = (client as any).user;
+    if (user) {
+      this.logger.log(`User ${user.email} disconnected`);
+    }
   }
 
-  // Client gửi tin nhắn
   @SubscribeMessage('chat:send')
   async onSend(
     @ConnectedSocket() client: Socket,
@@ -75,7 +78,6 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     const { email, role } = (client as any).user;
     const body = JSON.parse(bodyText as string);
     console.log(`Received message from ${email}:`, body.text);
-    // Admin gửi thì cần biết user đích; User gửi thì tự map conv
     const message = await this.chatService.sendMessage({
       senderEmail: email,
       text: body.text ?? '',
