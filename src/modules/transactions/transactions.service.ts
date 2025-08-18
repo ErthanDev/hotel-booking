@@ -79,15 +79,20 @@ export class TransactionsService {
     this.logger.log(`Calculating revenue for date (VN): ${date}`);
 
 
-    const startOfDayVN = moment.tz(date, 'Asia/Ho_Chi_Minh').startOf('day').toDate(); // 00:00 VN
-    const endOfDayVN = moment.tz(date, 'Asia/Ho_Chi_Minh').endOf('day').toDate();     // 23:59:59 VN
+    const tz = 'Asia/Ho_Chi_Minh';
 
-    this.logger.log(`From: ${startOfDayVN.toISOString()} - To: ${endOfDayVN.toISOString()}`);
+    const startOfDayUTC = moment.tz(date, tz).startOf('day').utc().toDate();
+
+    const endOfDayUTC = moment.tz(date, tz).endOf('day').utc().toDate();
+
+    const endOfDayUTCExclusive = moment.tz(date, tz).add(1, 'day').startOf('day').utc().toDate();
+
+    this.logger.log(`From: ${startOfDayUTC.toISOString()} - To: ${endOfDayUTC.toISOString()}`);
 
     const totalRevenue = await this.transactionModel.aggregate([
       {
         $match: {
-          createdAt: { $gte: startOfDayVN, $lte: endOfDayVN },
+          createdAt: { $gte: startOfDayUTC, $lte: endOfDayUTCExclusive },
           status: TransactionStatus.SUCCESS,
         },
       },
