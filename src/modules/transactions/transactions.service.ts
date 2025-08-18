@@ -103,7 +103,7 @@ export class TransactionsService {
         },
       },
     ]);
-
+    this.logger.debug(`Total revenue for date ${date}: ${totalRevenue[0]?.total || 0}`);
     return totalRevenue[0]?.total || 0;
   }
 
