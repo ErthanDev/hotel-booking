@@ -29,12 +29,12 @@ export class TelegramService {
     const revenue = await this.transactionsService.getRevenueForDate(todayVN);
 
     const message = `📊 Doanh thu ngày ${todayVN} là: ${revenue.toLocaleString('vi-VN')} VND`;
-
+    this.logger.debug(`Sending daily revenue message to Telegram: ${message}`);
     try {
       await this.bot.sendMessage(this.chatId, message);
-      this.logger.log('Đã gửi báo cáo doanh thu hàng ngày');
+      this.logger.debug('Sent daily revenue message to Telegram successfully.');
     } catch (error) {
-      this.logger.error('Lỗi gửi tin nhắn Telegram:', error);
+      this.logger.error('Error sending Telegram message:', error);
     }
   }
 
