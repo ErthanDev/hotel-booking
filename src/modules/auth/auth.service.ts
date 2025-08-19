@@ -13,10 +13,12 @@ import { CacheService } from '../cache/cache.service';
 import { NAME_ACTION } from 'src/constants/name-action.enum';
 import { NAME_QUEUE } from 'src/constants/name-queue.enum';
 import { Response } from 'express';
+import { v4 as uuidv4 } from 'uuid';
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private timeResendEmail = 300;
+  private readonly RESET_TOKEN_TTL_SECONDS = 10 * 60
   constructor(
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
@@ -315,9 +317,46 @@ export class AuthService {
     };
   }
 
-  async verifyOtpForgotPassword(email: string, otp: string, newPassword: string) {
-    this.logger.debug(`Start verify otp forgot password email: ${email}`);
-    const result = await this.cacheService.validateOtp(NAME_ACTION.SEND_OTP_FORGOT_PASSWORD, email, otp);
+  // async verifyOtpForgotPassword(email: string, otp: string, newPassword: string) {
+  //   this.logger.debug(`Start verify otp forgot password email: ${email}`);
+  //   const result = await this.cacheService.validateOtp(NAME_ACTION.SEND_OTP_FORGOT_PASSWORD, email, otp);
+  //   if (!result.success) {
+  //     if (result.retryAfter) {
+  //       throw new AppException({
+  //         message: `Too many failed attempts. Please try again in ${result.retryAfter} seconds.`,
+  //         errorCode: 'OTP_BLOCKED',
+  //         statusCode: HttpStatus.TOO_MANY_REQUESTS,
+  //       });
+  //     }
+
+  //     throw new AppException({
+  //       message: 'Invalid or expired OTP',
+  //       errorCode: 'INVALID_OTP',
+  //       statusCode: HttpStatus.BAD_REQUEST,
+  //     });
+  //   }
+  //   await this.cacheService.deleteOtp(NAME_ACTION.SEND_OTP_FORGOT_PASSWORD, email);
+  //   const hashedPassword = await bcrypt.hash(newPassword, 10);
+  //   await this.userModel.updateOne({ email }, { password: hashedPassword });
+  //   this.cacheService.sendNewPassword(email);
+  //   this.logger.debug(`OTP verified successfully for email: ${email}`);
+  //   this.logger.debug(`End verify otp forgot password email: ${email}`);
+
+  //   return {
+  //     success: true,
+  //     message: 'Password reset successfully',
+  //   };
+  // }
+
+  async verifyOtpForReset(email: string, otp: string) {
+    this.logger.debug(`Start verify otp for reset password email: ${email}`);
+
+    const result = await this.cacheService.validateOtp(
+      NAME_ACTION.SEND_OTP_FORGOT_PASSWORD,
+      email,
+      otp,
+    );
+
     if (!result.success) {
       if (result.retryAfter) {
         throw new AppException({
@@ -326,24 +365,67 @@ export class AuthService {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
         });
       }
-
       throw new AppException({
         message: 'Invalid or expired OTP',
         errorCode: 'INVALID_OTP',
         statusCode: HttpStatus.BAD_REQUEST,
       });
     }
+
     await this.cacheService.deleteOtp(NAME_ACTION.SEND_OTP_FORGOT_PASSWORD, email);
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await this.userModel.updateOne({ email }, { password: hashedPassword });
-    this.cacheService.sendNewPassword(email);
-    this.logger.debug(`OTP verified successfully for email: ${email}`);
-    this.logger.debug(`End verify otp forgot password email: ${email}`);
+
+    const resetToken = uuidv4();
+    await this.cacheService.issueResetToken(
+      NAME_ACTION.RESET_PASSWORD_TOKEN,
+      email,
+      resetToken,
+      this.RESET_TOKEN_TTL_SECONDS,
+    );
+
+    this.logger.debug(`OTP verified. Issued reset token for: ${email}`);
+
+    return {
+      success: true,
+      message: 'OTP verified. Use resetToken to set a new password.',
+      resetToken,
+      expiresIn: this.RESET_TOKEN_TTL_SECONDS, // giây
+    };
+  }
+
+  async resetPasswordWithToken(email: string, resetToken: string, newPassword: string) {
+    this.logger.debug(`Start reset password email: ${email}`);
+
+    const valid = await this.cacheService.validateAndConsumeResetToken(
+      NAME_ACTION.RESET_PASSWORD_TOKEN,
+      email,
+      resetToken,
+    );
+
+    if (!valid) {
+      throw new AppException({
+        message: 'Invalid or expired reset token',
+        errorCode: 'INVALID_RESET_TOKEN',
+        statusCode: HttpStatus.BAD_REQUEST,
+      });
+    }
+
+    const user = await this.userModel.findOne({ email }).lean();
+    if (!user) {
+      return { success: true, message: 'Password reset successfully' };
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await this.userModel.updateOne({ email }, { password: hashed });
+
+    await this.cacheService.deleteAllResetArtifacts?.(email);
+
+    this.cacheService.sendNewPassword?.(email);
+
+    this.logger.debug(`Password reset successfully for: ${email}`);
 
     return {
       success: true,
       message: 'Password reset successfully',
     };
   }
-
 }

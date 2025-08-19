@@ -59,10 +59,24 @@ export class AuthController {
     return this.authService.sendOtpForgotPassword(email);
   }
 
+  // @Post('reset-password')
+  // @Public()
+  // @ResponseMessage('Password reset successfully')
+  // async resetPassword(@Body('email') email: string, @Body('otp') otp: string, @Body('newPassword') newPassword: string) {
+  //   return this.authService.verifyOtpForgotPassword(email, otp, newPassword);
+  // }
+
+  @Post('verify-otp-forgot-password')
+  @Public()
+  @ResponseMessage('OTP verified successfully')
+  async verifyOtpForgotPass(@Body('email') email: string, @Body('otp') otp: string) {
+    return this.authService.verifyOtpForReset(email, otp);
+  }
+
   @Post('reset-password')
   @Public()
   @ResponseMessage('Password reset successfully')
-  async resetPassword(@Body('email') email: string, @Body('otp') otp: string, @Body('newPassword') newPassword: string) {
-    return this.authService.verifyOtpForgotPassword(email, otp, newPassword);
+  async resetPassword(@Body('email') email: string, @Body('resetToken') resetToken: string, @Body('newPassword') newPassword: string) {
+    return this.authService.resetPasswordWithToken(email, resetToken, newPassword);
   }
 }

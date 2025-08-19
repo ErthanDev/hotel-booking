@@ -5,6 +5,7 @@ import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 import { NAME_QUEUE } from 'src/constants/name-queue.enum';
 import { PaymentMethod } from '../transactions/schema/transaction.schema';
+import { NAME_ACTION } from 'src/constants/name-action.enum';
 
 
 type OtpValidationResult = {
@@ -406,5 +407,23 @@ export class CacheService {
     async invalidateLatestMsgsCache(convId: string) {
         // đơn giản: xóa theo các limit phổ biến; hoặc bỏ qua, vì TTL ngắn
         // tuỳ bạn: await this.redis.del(this.latestMsgsKey(convId, 30));
+    }
+
+    async issueResetToken(action: string, email: string, token: string, ttlSeconds: number) {
+        const key = `${action}:${email}`;
+        await this.redis.set(key, token, 'EX', ttlSeconds);
+    }
+
+    async validateAndConsumeResetToken(action: string, email: string, token: string): Promise<boolean> {
+        const key = `${action}:${email}`;
+        const current = await this.redis.get(key);
+        if (!current || current !== token) return false;
+        await this.redis.del(key);
+        return true;
+    }
+
+    async deleteAllResetArtifacts(email: string) {
+        await this.redis.del(`${NAME_ACTION.RESET_PASSWORD_TOKEN}:${email}`);
+        await this.redis.del(`${NAME_ACTION.SEND_OTP_FORGOT_PASSWORD}:${email}`);
     }
 }
