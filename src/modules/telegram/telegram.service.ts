@@ -34,7 +34,8 @@ export class TelegramService {
       await this.bot.sendMessage(this.chatId, message);
       this.logger.debug('Sent daily revenue message to Telegram successfully.');
     } catch (error) {
-      this.logger.error('Error sending Telegram message:', error);
+      this.logger.error('Error sending Telegram message:', error.message);
+      throw new Error(`Failed to send Telegram message: ${error.message}`);
     }
   }
 

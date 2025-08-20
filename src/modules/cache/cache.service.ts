@@ -426,4 +426,24 @@ export class CacheService {
         await this.redis.del(`${NAME_ACTION.RESET_PASSWORD_TOKEN}:${email}`);
         await this.redis.del(`${NAME_ACTION.SEND_OTP_FORGOT_PASSWORD}:${email}`);
     }
+
+    async getListRoomsCache(limit: number, page: number) {
+        const version = await this.getVersionCache(`rooms`);
+        const cacheKey = `rooms:list:${version}:${page}:${limit}`;
+        const cachedData = await this.redis.get(cacheKey);
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+        return null;
+    }
+
+    async setListRoomsCache(limit: number, page: number, data: any[]) {
+        const version = await this.getVersionCache(`rooms`);
+        const cacheKey = `rooms:list:${version}:${page}:${limit}`;
+        await this.redis.set(cacheKey, JSON.stringify(data), 'EX', this.TTL);
+    }
+
+    async invalidateRoomsCache() {
+        await this.increaseVersionCache(`rooms`);
+    }
 }

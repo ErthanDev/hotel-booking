@@ -5,6 +5,8 @@ import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { Roles } from 'src/decorators/roles.decorator';
 import { UserRole } from 'src/constants/user-role';
+import { Public } from 'src/decorators/public.decorator';
+import { ResponseMessage } from 'src/decorators/response-message.decorator';
 
 @Controller('rooms')
 export class RoomsController {
@@ -13,6 +15,8 @@ export class RoomsController {
   @Post()
   @Roles(UserRole.ADMIN)
   @UseInterceptors(FileInterceptor('file'))
+  @ResponseMessage('Room created successfully')
+
   async create(
     @Body() createRoomDto: CreateRoomDto,
     @UploadedFile() file?: Express.Multer.File
@@ -22,6 +26,7 @@ export class RoomsController {
 
 
   @Get(':id')
+  @ResponseMessage('Fetched a room successfully')
   async findOne(@Param('id') id: string) {
     return this.roomsService.findOne(id);
   }
@@ -29,6 +34,7 @@ export class RoomsController {
   @Patch(':id')
   @UseInterceptors(FileInterceptor('file'))
   @Roles(UserRole.ADMIN)
+  @ResponseMessage('Updated a room successfully')
 
   async update(
     @Param('id') id: string,
@@ -40,17 +46,28 @@ export class RoomsController {
 
   @Delete(':id')
   @Roles(UserRole.ADMIN)
+  @ResponseMessage('Deleted a room successfully')
+
   async remove(@Param('id') id: string) {
     await this.roomsService.remove(id);
     return { message: 'Room deleted successfully' };
   }
 
   @Patch('update-checkIn/:id')
+  @ResponseMessage('Updated a room status successfully')
+
   @Roles(UserRole.ADMIN)
   async updateCheckInStatus(
     @Param('id') id: string,
     @Body('isCheckIn') isCheckIn: boolean
   ) {
     return this.roomsService.changeRoomStatus(id, isCheckIn);
+  }
+
+  @Get()
+  @Public()
+  @ResponseMessage('Fetched rooms successfully')
+  async findAll(@Query('limit') limit: number = 10, @Query('page') page: number = 1) {
+    return this.roomsService.findAll(limit, page);
   }
 }

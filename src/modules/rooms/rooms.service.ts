@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { InjectModel } from '@nestjs/mongoose';
@@ -7,6 +7,7 @@ import { Model } from 'mongoose';
 import { UploadService } from '../upload/upload.service';
 import { UtilsService } from '../utils/utils.service';
 import { CacheService } from '../cache/cache.service';
+import { AppException } from 'src/common/exception/app.exception';
 
 @Injectable()
 export class RoomsService {
@@ -34,6 +35,7 @@ export class RoomsService {
       image: imageUrl,
     });
     this.logger.log(`End of room creation process`);
+    await this.cacheService.invalidateRoomsCache();
     return room.save();
   }
 
@@ -83,6 +85,7 @@ export class RoomsService {
     }
     await this.cacheService.invalidateRoomDetailCacheById(id);
     this.logger.log(`Room with ID ${id} updated successfully`);
+    await this.cacheService.invalidateRoomsCache();
     return updatedRoom;
   }
 
@@ -130,11 +133,46 @@ export class RoomsService {
     ).exec();
 
     if (!room) {
-      throw new Error(`Room with ID ${id} not found`);
+      throw new AppException({
+        message: `Room with ID ${id} not found`,
+        statusCode: HttpStatus.NOT_FOUND,
+        errorCode: 'ROOM_NOT_FOUND',
+      });
     }
 
     await this.cacheService.invalidateRoomDetailCacheById(id);
     this.logger.log(`Room with ID ${id} status changed to ${status}`);
     return room;
+  }
+
+  async findAll(limit: number, page: number) {
+    this.logger.log(`Fetching all rooms with limit ${limit} and page ${page}`);
+    const cachedRooms = await this.cacheService.getListRoomsCache(limit, page);
+    if (cachedRooms) {
+      this.logger.debug(`Returning cached rooms for limit ${limit} and page ${page}`);
+      return cachedRooms;
+    }
+    const rooms = await this.roomModel.find()
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean()
+      .exec();
+    const res = rooms.map(room => {
+      return {
+        roomId: room._id,
+        roomType: room.roomType,
+        priceByDay: room.priceByDay,
+        image: room.image,
+        name: room.name,
+        sizeRoom: room.sizeRoom,
+        maxPeople: room.maxPeople,
+        description: room.description,
+        amenities: room.amenities,
+        beds: room.beds,
+      }
+    })
+    await this.cacheService.setListRoomsCache(limit, page, res);
+    this.logger.log(`Fetched ${res.length} rooms successfully`);
+    return res;
   }
 }
