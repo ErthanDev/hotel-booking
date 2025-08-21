@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Transform } from "class-transformer";
+import { Document } from "mongoose";
 import { UserRole } from "src/constants/user-role";
 
 @Schema({
@@ -25,7 +26,6 @@ export class User {
     @Prop({ required: true })
     phoneNumber: string;
 
- 
 
     @Prop({ enum: UserRole, default: UserRole.USER })
     role: UserRole;

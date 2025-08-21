@@ -20,7 +20,10 @@ export class Room {
     sizeRoom: number;
 
     @Prop({ type: String })
-    description: string;
+    shortDescription: string;
+
+    @Prop({ type: String })
+    fullDescription: string;
 
     @Prop({ type: [String], default: [] })
     amenities: string[];
@@ -34,8 +37,8 @@ export class Room {
     @Prop({ type: Number, required: true })
     maxPeople: number;
 
-    @Prop({ type: String, required: true })
-    image: string;
+    @Prop({ type: [String], default: [] })
+    image: string[];
 
     @Prop({ type: Boolean, default: false })
     isCheckIn: boolean;

@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, Query } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, Query, UploadedFiles } from '@nestjs/common';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { RoomsService } from './rooms.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
@@ -13,15 +13,13 @@ export class RoomsController {
   constructor(private readonly roomsService: RoomsService) { }
 
   @Post()
-  @Roles(UserRole.ADMIN)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FilesInterceptor('files', 10))
   @ResponseMessage('Room created successfully')
-
   async create(
     @Body() createRoomDto: CreateRoomDto,
-    @UploadedFile() file?: Express.Multer.File
+    @UploadedFiles() files: Express.Multer.File[]
   ) {
-    return this.roomsService.create(createRoomDto, file);
+    return this.roomsService.create(createRoomDto, files);
   }
 
 

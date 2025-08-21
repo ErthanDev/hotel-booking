@@ -16,11 +16,15 @@ export class CreateRoomDto {
     @Type(() => Number)
     @IsNumber()
     @Min(1)
-    sizeRoom: number;
+    sizeRoom: number;    
 
     @IsString()
     @IsOptional()
-    description?: string;
+    shortDescription?: string;
+
+    @IsString()
+    @IsOptional()
+    fullDescription?: string;
 
     @IsArray()
     @IsString({ each: true })

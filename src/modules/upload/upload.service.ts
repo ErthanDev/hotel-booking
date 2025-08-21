@@ -9,7 +9,7 @@ export class UploadService {
         return new Promise<CloudinaryResponse>((resolve, reject) => {
             const uploadStream = cloudinary.uploader.upload_stream(
                 {
-                    folder: folder, 
+                    folder: folder,
                 },
                 (error, result) => {
                     if (error) return reject(error);
@@ -31,6 +31,30 @@ export class UploadService {
             });
         } catch (error) {
             throw error;
+        }
+    }
+    async uploadFilesAtomic(
+        files: Express.Multer.File[],
+        folder: string,
+    ): Promise<CloudinaryResponse[]> {
+        const uploaded: CloudinaryResponse[] = [];
+        try {
+            for (const file of files) {
+                const res = await this.uploadFile(file, folder);
+                uploaded.push(res);
+            }
+            return uploaded;
+        } catch (err) {
+            await Promise.allSettled(
+                uploaded.map((r) => {
+                    const id =
+                        r.public_id?.startsWith(`${folder}/`)
+                            ? r.public_id.slice(folder.length + 1)
+                            : r.public_id;
+                    return this.deleteFile(id, folder);
+                }),
+            );
+            throw err;
         }
     }
 }

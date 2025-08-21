@@ -1,10 +1,7 @@
-import { IsEmail, IsEnum, IsOptional, IsString, IsBoolean } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString, IsBoolean, MinLength } from 'class-validator';
 import { UserRole } from 'src/constants/user-role';
 
 export class UpdateUserDto {
-    @IsOptional()
-    @IsEmail()
-    email?: string;
 
     @IsOptional()
     @IsString()
@@ -17,6 +14,5 @@ export class UpdateUserDto {
     @IsOptional()
     @IsString()
     phoneNumber?: string;
-
 
 }

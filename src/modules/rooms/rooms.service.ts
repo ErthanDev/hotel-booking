@@ -20,19 +20,18 @@ export class RoomsService {
     private cacheService: CacheService
 
   ) { }
-
-  async create(createRoomDto: CreateRoomDto, file?: Express.Multer.File): Promise<Room> {
+  async create(createRoomDto: CreateRoomDto, files?: Express.Multer.File[]): Promise<Room> {
     this.logger.log('Creating a new room ');
-    let imageUrl = '';
+    let imageUrls: string[] = [];
 
-    if (file) {
-      const uploadResult = await this.uploadService.uploadFile(file, 'rooms');
-      imageUrl = uploadResult.secure_url;
+    if (files) {
+      const uploadResult = await this.uploadService.uploadFilesAtomic(files, 'rooms');
+      imageUrls = uploadResult.map(result => result.secure_url);
     }
 
     const room = new this.roomModel({
       ...createRoomDto,
-      image: imageUrl,
+      image: imageUrls,
     });
     this.logger.log(`End of room creation process`);
     await this.cacheService.invalidateRoomsCache();
@@ -60,23 +59,25 @@ export class RoomsService {
     this.logger.log(`Updating room with ID ${id}`);
     const room = await this.findOne(id);
     const transformDto = this.utilsService.removeEmptyValues(updateRoomDto);
-    let imageUrl = room.image;
+    let imageUrls = room.image || [];
 
     if (file) {
-      if (room.image) {
-        const publicId = this.extractPublicIdFromUrl(room.image);
-        if (publicId) {
-          await this.uploadService.deleteFile(publicId, 'rooms');
+      if (room.image && room.image.length > 0) {
+        for (const imageUrl of room.image) {
+          const publicId = this.extractPublicIdFromUrl(imageUrl);
+          if (publicId) {
+            await this.uploadService.deleteFile(publicId, 'rooms');
+          }
         }
       }
 
       const uploadResult = await this.uploadService.uploadFile(file, 'rooms');
-      imageUrl = uploadResult.secure_url;
+      imageUrls = [uploadResult.secure_url];
     }
 
     const updatedRoom = await this.roomModel.findByIdAndUpdate(
       id,
-      { ...transformDto, image: imageUrl },
+      { ...transformDto, image: imageUrls },
       { new: true }
     ).exec();
 
@@ -92,10 +93,12 @@ export class RoomsService {
   async remove(id: string): Promise<void> {
     const room = await this.findOne(id);
 
-    if (room.image) {
-      const publicId = this.extractPublicIdFromUrl(room.image);
-      if (publicId) {
-        await this.uploadService.deleteFile(publicId, 'rooms');
+    if (room.image && room.image.length > 0) {
+      for (const imageUrl of room.image) {
+        const publicId = this.extractPublicIdFromUrl(imageUrl);
+        if (publicId) {
+          await this.uploadService.deleteFile(publicId, 'rooms');
+        }
       }
     }
 
@@ -162,11 +165,12 @@ export class RoomsService {
         roomId: room._id,
         roomType: room.roomType,
         priceByDay: room.priceByDay,
-        image: room.image,
+        images: room.image,
         name: room.name,
         sizeRoom: room.sizeRoom,
         maxPeople: room.maxPeople,
-        description: room.description,
+        shortDescription: room.shortDescription,
+        fullDescription: room.fullDescription,
         amenities: room.amenities,
         beds: room.beds,
       }
