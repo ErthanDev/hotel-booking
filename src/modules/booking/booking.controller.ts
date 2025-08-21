@@ -7,6 +7,7 @@ import { ResponseMessage } from 'src/decorators/response-message.decorator';
 import { Roles } from 'src/decorators/roles.decorator';
 import { UserRole } from 'src/constants/user-role';
 import { CreateBookingDtoByAdminDto } from './dto/create-booking-by-admin.dto';
+import { Public } from 'src/decorators/public.decorator';
 
 @Controller('booking')
 export class BookingController {
@@ -19,6 +20,7 @@ export class BookingController {
   }
 
   @Get('get-available-rooms')
+  @Public()
   @ResponseMessage('Available rooms retrieved successfully')
   async getAvailableRooms(
     @Query('checkInDate') checkInDate: string,

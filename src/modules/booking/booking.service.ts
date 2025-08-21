@@ -14,6 +14,7 @@ import timezone from 'dayjs/plugin/timezone';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { NAME_QUEUE } from 'src/constants/name-queue.enum';
 import { CreateBookingDtoByAdminDto } from './dto/create-booking-by-admin.dto';
+import { stat } from 'fs';
 @Injectable()
 export class BookingService {
   private readonly logger = new Logger(BookingService.name);
@@ -179,40 +180,78 @@ export class BookingService {
     return basePrice * roundedDuration;
   }
 
+  private parseDateUTC = (s?: string) => {
+    if (!s) return undefined;
+    const str = /[zZ]|[+\-]\d{2}:\d{2}/.test(s) ? s : `${s}T00:00:00Z`;
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? undefined : d;
+  };
+
   async getAvailableRooms(
-    startDate: string,
-    endDate: string,
+    startDate?: string,
+    endDate?: string,
     maxPrice?: number,
     numberOfGuests?: number,
     roomType?: string,
-    limit: number = 10,
-    page: number = 1,
+    limit = 10,
+    page = 1,
   ) {
     const skip = (page - 1) * limit;
-    const start = new Date(startDate);
-    start.setUTCHours(3, 0, 0, 0);
-    const end = new Date(endDate);
-    end.setUTCHours(2, 0, 0, 0);
+
+    const CHECKIN_UTC_HOUR = 3;
+    const CHECKOUT_UTC_HOUR = 2;
+
+    let start = this.parseDateUTC(startDate);
+    let end = this.parseDateUTC(endDate);
+
+    if (!start && !end) {
+      const today = new Date();
+      start = new Date(Date.UTC(
+        today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(),
+        CHECKIN_UTC_HOUR, 0, 0, 0
+      ));
+      end = new Date(start);
+      end.setUTCDate(end.getUTCDate() + 1);
+      end.setUTCHours(CHECKOUT_UTC_HOUR, 0, 0, 0);
+    } else if (start && !end) {
+      end = new Date(start);
+      end.setUTCDate(end.getUTCDate() + 1);
+    } else if (!start && end) {
+      start = new Date(end);
+      start.setUTCDate(start.getUTCDate() - 1);
+    }
+
+    start!.setUTCHours(CHECKIN_UTC_HOUR, 0, 0, 0);
+    end!.setUTCHours(CHECKOUT_UTC_HOUR, 0, 0, 0);
+
+    if (start! >= end!) {
+      throw new AppException({
+        message: 'Invalid date range',
+        errorCode: 'INVALID_DATE_RANGE',
+        statusCode: HttpStatus.BAD_REQUEST,
+      });
+    }
+
+    this.logger.log(
+      `Fetching available rooms from ${start!.toISOString()} (UTC) to ${end!.toISOString()} (UTC)` +
+      ` with max price ${maxPrice ?? '—'} and guests ${numberOfGuests ?? '—'}`
+    );
+
     const overlappingBookings = await this.bookingModel.find({
-      status: { $in: [OccupancyStatus.CONFIRMED, OccupancyStatus.PENDING] },
-      $or: [
-        { checkin: { $lt: end }, checkout: { $gt: start } },
-      ],
-    }).select('roomId');
+      status: { $in: [OccupancyStatus.CONFIRMED, OccupancyStatus.PENDING, OccupancyStatus.PAYMENT_URL] },
+      checkInDate: { $lt: end!.toISOString() },
+      checkOutDate: { $gt: start!.toISOString() },
+    }).select('room');
 
-    const unavailableRoomIds = overlappingBookings.map((b: any) => b.roomId);
 
-    const availableRooms = await this.roomModel.find({
-      _id: { $nin: unavailableRoomIds },
-      price: { $lte: maxPrice },
-      capacity: { $gte: numberOfGuests },
-      ...(roomType ? { roomType } : {}),
-    })
-      .skip(skip)
-      .limit(limit)
+    const unavailableRoomIds = overlappingBookings.map((b: any) => b.room);
 
-    return availableRooms;
+    const roomQuery: any = { _id: { $nin: unavailableRoomIds } };
+    if (typeof maxPrice === 'number') roomQuery.price = { $lte: maxPrice };
+    if (typeof numberOfGuests === 'number') roomQuery.capacity = { $gte: numberOfGuests };
+    if (roomType) roomQuery.roomType = roomType;
 
+    return this.roomModel.find(roomQuery).skip(skip).limit(limit);
   }
 
 
