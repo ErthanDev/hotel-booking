@@ -28,32 +28,32 @@ export class TelegramService {
   }
 
   private async sendMessageRaw(text: string, options?: { [k: string]: any }) {
-    if (!this.botToken || !this.chatId) {
-      throw new AppException({
-        statusCode: HttpStatus.BAD_REQUEST,
-        message: 'Telegram bot token or chat id is not configured.',
-        errorCode: 'TELEGRAM_NOT_CONFIGURED',
-      });
-    }
-
-    const url = `${this.apiBase}/sendMessage`;
-    const payload = {
-      chat_id: this.chatId,
-      text,
-      ...options,
-    };
-
     try {
+      if (!this.botToken || !this.chatId) {
+        throw new AppException({
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: 'Telegram bot token or chat id is not configured.',
+          errorCode: 'TELEGRAM_NOT_CONFIGURED',
+        });
+      }
+
+      const url = `${this.apiBase}/sendMessage`;
+      const payload = {
+        chat_id: this.chatId,
+        text,
+        ...options,
+      };
+
       const resp = await firstValueFrom(this.httpService.post(url, payload));
       this.logger.debug(`Telegram API responded with status ${resp.status}`);
       return resp.data;
     } catch (err) {
       const e: any = err;
-      this.logger.error('Error sending Telegram message', {
+      this.logger.error('Error sending Telegram message', JSON.stringify({
         message: e?.message,
         status: e?.response?.status,
         data: e?.response?.data,
-      });
+      }));
 
       const description = e?.response?.data?.description ?? e?.message ?? 'Unknown error';
       throw new AppException({
