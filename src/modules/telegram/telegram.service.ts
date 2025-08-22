@@ -49,6 +49,7 @@ export class TelegramService {
       return resp.data;
     } catch (err) {
       const e: any = err;
+      this.logger.error('Failed to send Telegram message', JSON.stringify(e));
       this.logger.error('Error sending Telegram message', JSON.stringify({
         message: e?.message,
         status: e?.response?.status,
