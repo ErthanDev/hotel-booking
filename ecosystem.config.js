@@ -9,6 +9,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: process.env.PORT,
+        NODE_OPTIONS: '--dns-result-order=ipv4first'
       },
       node_args: '--no-warnings',
     },
