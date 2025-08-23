@@ -1,12 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CreateTransactionDto } from './dto/create-transaction.dto';
-import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { PaymentMethod, Transaction, TransactionDocument, TransactionStatus } from './schema/transaction.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Booking, BookingDocument } from '../booking/schema/booking.schema';
 import { OccupancyStatus } from 'src/constants/occupancy-status.enum';
 import moment from 'moment-timezone';
+import { CacheService } from '../cache/cache.service';
 
 @Injectable()
 export class TransactionsService {
@@ -15,6 +14,7 @@ export class TransactionsService {
     @InjectModel(Transaction.name)
     private readonly transactionModel: Model<TransactionDocument>,
     @InjectModel(Booking.name) private readonly bookingModel: Model<BookingDocument>,
+    private readonly cacheService: CacheService,
   ) { }
 
 
@@ -25,55 +25,67 @@ export class TransactionsService {
     const expiredBookings = await this.bookingModel.find({
       status: { $in: [OccupancyStatus.PENDING, OccupancyStatus.PAYMENT_URL] },
       expiredAt: { $lte: now },
-    });
+    }).select('_id status bookingId userEmail');
 
     if (!expiredBookings.length) return;
 
     const bookingUpdates: any[] = [];
     const transactionUpdates: any[] = [];
+    const affectedUsers = new Set<string>();
 
     for (const booking of expiredBookings) {
-      const transaction = await this.transactionModel.findOne({
-        bookingId: booking._id,
-      });
+      const tx = await this.transactionModel.findOne({ bookingId: booking._id }).select('status providerTransactionId');
 
       let newStatus: OccupancyStatus;
+      let shouldUpdateTx = false;
 
-      if (transaction?.status === TransactionStatus.SUCCESS) {
+      if (tx?.status === TransactionStatus.SUCCESS) {
         newStatus = OccupancyStatus.CONFIRMED;
       } else {
         newStatus = OccupancyStatus.FAILED;
-        if (transaction && transaction.status == TransactionStatus.FAILED) {
-          continue
-        }
-        else {
-          transactionUpdates.push({
-            updateOne: {
-              filter: { providerTransactionId: booking.bookingId },
-              update: { $set: { status: TransactionStatus.FAILED } },
-            },
-          });
+        if (!tx || tx.status !== TransactionStatus.FAILED) {
+          shouldUpdateTx = true;
         }
       }
 
-      bookingUpdates.push({
-        updateOne: {
-          filter: { _id: booking._id },
-          update: { $set: { status: newStatus } },
-        },
-      });
+      if (shouldUpdateTx) {
+        transactionUpdates.push({
+          updateOne: {
+            filter: { providerTransactionId: booking.bookingId },
+            update: { $set: { status: TransactionStatus.FAILED } },
+          },
+        });
+      }
+
+      if (booking.status !== newStatus) {
+        bookingUpdates.push({
+          updateOne: {
+            filter: { _id: booking._id },
+            update: { $set: { status: newStatus } },
+          },
+        });
+        if (booking.userEmail) affectedUsers.add(booking.userEmail);
+      }
     }
 
-    if (bookingUpdates.length > 0) {
-      this.logger.debug(`Updating ${bookingUpdates.length} bookings to status ${OccupancyStatus.FAILED}`);
+    if (bookingUpdates.length) {
+      this.logger.debug(`Updating ${bookingUpdates.length} bookings`);
       await this.bookingModel.bulkWrite(bookingUpdates);
     }
 
-    if (transactionUpdates.length > 0) {
-      this.logger.debug(`Updating ${transactionUpdates.length} transactions to status ${TransactionStatus.FAILED}`);
+    if (transactionUpdates.length) {
+      this.logger.debug(`Updating ${transactionUpdates.length} transactions`);
       await this.transactionModel.bulkWrite(transactionUpdates);
     }
+
+    if (affectedUsers.size) {
+      await Promise.all(
+        [...affectedUsers].map((email) => this.cacheService.invalidateMyBookingsCache(email))
+      );
+      this.logger.debug(`Invalidated my_bookings cache for ${affectedUsers.size} users`);
+    }
   }
+
 
   async getRevenueForDate(date: string): Promise<number> {
     this.logger.log(`Calculating revenue for date (VN): ${date}`);

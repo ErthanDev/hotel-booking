@@ -52,4 +52,10 @@ export class BookingController {
   async createBookingByAdmin(@Body() createBookingDto: CreateBookingDtoByAdminDto) {
     return this.bookingService.createBookingByAdmin(createBookingDto);
   }
+
+  @Get('get-my-bookings')
+  @ResponseMessage('User bookings retrieved successfully')
+  async getMyBookings(@User() user: IUser) {
+    return this.bookingService.getBookingsByUser(user.email);
+  }
 }

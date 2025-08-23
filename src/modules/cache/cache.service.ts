@@ -446,4 +446,24 @@ export class CacheService {
     async invalidateRoomsCache() {
         await this.increaseVersionCache(`rooms`);
     }
+
+    async getMyBookingsCache(userEmail: string, limit: number, page: number) {
+        const version = await this.getVersionCache(`my_bookings:${userEmail}`);
+        const cacheKey = `my_bookings:list:${userEmail}:${version}:${page}:${limit}`;
+        const cachedData = await this.redis.get(cacheKey);
+        if (cachedData) {
+            return JSON.parse(cachedData);
+        }
+        return null;
+    }
+
+    async setMyBookingsCache(userEmail: string, limit: number, page: number, data: any[]) {
+        const version = await this.getVersionCache(`my_bookings:${userEmail}`);
+        const cacheKey = `my_bookings:list:${userEmail}:${version}:${page}:${limit}`;
+        await this.redis.set(cacheKey, JSON.stringify(data), 'EX', this.TTL);
+    }
+
+    async invalidateMyBookingsCache(userEmail: string) {
+        await this.increaseVersionCache(`my_bookings:${userEmail}`);
+    }
 }

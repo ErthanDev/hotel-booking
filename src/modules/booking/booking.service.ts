@@ -110,7 +110,7 @@ export class BookingService {
         });
         await this.cacheService.unlockRoom(roomId, checkIn, checkOut);
         this.logger.log(`Booking created successfully with ID: ${booking._id}`);
-
+        await this.cacheService.invalidateMyBookingsCache(userEmail);
         const response = {
           roomId: room._id,
           checkInDate: booking.checkInDate,
@@ -429,5 +429,23 @@ export class BookingService {
       }
       throw err;
     }
+  }
+
+  async getBookingsByUser(userEmail: string, limit: number = 10, page: number = 1) {
+    this.logger.log(`Fetching bookings for user: ${userEmail}, page: ${page}, limit: ${limit}`);
+    const cachedBookings = await this.cacheService.getMyBookingsCache(userEmail, limit, page);
+    if (cachedBookings) {
+      this.logger.debug(`Returning cached bookings for user: ${userEmail}`);
+      return cachedBookings;
+    }
+    const skip = (page - 1) * limit;
+    const bookings = await this.bookingModel.find({ userEmail }).sort({ createdAt: -1 }).skip(skip).limit(limit).populate({
+      path: 'room',
+      select: 'name price',
+    }).select('-_id -__v -userEmail -userPhone -note -createdAt -updatedAt -expiredAt -paymentUrl');
+
+    await this.cacheService.setMyBookingsCache(userEmail, limit, page, bookings);
+    this.logger.log(`Fetched ${bookings.length} bookings for user: ${userEmail}`);
+    return bookings;
   }
 }
