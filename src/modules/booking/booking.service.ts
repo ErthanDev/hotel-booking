@@ -247,10 +247,10 @@ export class BookingService {
     const unavailableRoomIds = overlappingBookings.map((b: any) => b.room);
 
     const roomQuery: any = { _id: { $nin: unavailableRoomIds } };
-    if (typeof maxPrice === 'number') roomQuery.priceByDay = { $lte: maxPrice };
-    if (typeof numberOfGuests === 'number') roomQuery.maxPeople = { $gte: numberOfGuests };
+    if (maxPrice) roomQuery.priceByDay = { $lte: +maxPrice };
+    if (numberOfGuests) roomQuery.maxPeople = { $gte: +numberOfGuests };
     if (roomType) roomQuery.roomType = roomType;
-
+    this.logger.debug(`Room query: ${JSON.stringify(roomQuery)}`);
     return this.roomModel.find(roomQuery).skip(skip).limit(limit);
   }
 
