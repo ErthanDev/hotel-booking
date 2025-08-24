@@ -126,28 +126,6 @@ export class RoomsService {
     }
   }
 
-  async changeRoomStatus(id: string, isCheckIn: boolean): Promise<Room> {
-    const status = isCheckIn ? 'CHECKED_IN' : 'CHECKED_OUT';
-    this.logger.log(`Changing status of room with ID ${id} to ${status}`);
-    const room = await this.roomModel.findByIdAndUpdate(
-      id,
-      { isCheckIn: isCheckIn },
-      { new: true }
-    ).exec();
-
-    if (!room) {
-      throw new AppException({
-        message: `Room with ID ${id} not found`,
-        statusCode: HttpStatus.NOT_FOUND,
-        errorCode: 'ROOM_NOT_FOUND',
-      });
-    }
-
-    await this.cacheService.invalidateRoomDetailCacheById(id);
-    this.logger.log(`Room with ID ${id} status changed to ${status}`);
-    return room;
-  }
-
   async findAll(limit: number, page: number) {
     this.logger.log(`Fetching all rooms with limit ${limit} and page ${page}`);
     const cachedRooms = await this.cacheService.getListRoomsCache(limit, page);

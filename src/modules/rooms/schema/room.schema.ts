@@ -39,9 +39,6 @@ export class Room {
 
     @Prop({ type: [String], default: [] })
     image: string[];
-
-    @Prop({ type: Boolean, default: false })
-    isCheckIn: boolean;
 }
 
 export const RoomSchema = SchemaFactory.createForClass(Room);

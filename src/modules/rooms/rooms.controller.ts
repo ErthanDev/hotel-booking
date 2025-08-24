@@ -51,16 +51,7 @@ export class RoomsController {
     return { message: 'Room deleted successfully' };
   }
 
-  @Patch('update-checkIn/:id')
-  @ResponseMessage('Updated a room status successfully')
-
-  @Roles(UserRole.ADMIN)
-  async updateCheckInStatus(
-    @Param('id') id: string,
-    @Body('isCheckIn') isCheckIn: boolean
-  ) {
-    return this.roomsService.changeRoomStatus(id, isCheckIn);
-  }
+ 
 
   @Get()
   @Public()
