@@ -58,4 +58,11 @@ export class BookingController {
   async getMyBookings(@User() user: IUser) {
     return this.bookingService.getBookingsByUser(user.email);
   }
+
+  @Get('get-booking-calendar')
+  @ResponseMessage('Booking calendar retrieved successfully')
+  @Roles(UserRole.ADMIN)
+  async getBookingCalendar(@Query('start') start: string, @Query('end') end: string) {
+    return this.bookingService.getListBookingByAdmin(start, end);
+  }
 }

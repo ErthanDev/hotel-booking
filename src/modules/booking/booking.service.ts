@@ -448,4 +448,87 @@ export class BookingService {
     this.logger.log(`Fetched ${bookings.length} bookings for user: ${userEmail}`);
     return bookings;
   }
+
+  private getUtcRangeFromLocal(start?: string, end?: string) {
+    dayjs.extend(utc);
+    dayjs.extend(timezone);
+    const HOTEL_TZ = 'Asia/Ho_Chi_Minh';
+    const isDateOnly = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+    const sLocal = start
+      ? dayjs.tz(start, HOTEL_TZ)
+      : dayjs().tz(HOTEL_TZ).startOf('month');
+
+    const startUtc = sLocal.startOf('day').utc().toDate();
+    let endUtc: Date;
+    if (end) {
+      endUtc = isDateOnly(end)
+        ? dayjs.utc(end).endOf('day').toDate()
+        : dayjs(end).utc().toDate();
+    } else {
+      endUtc = dayjs
+        .utc(sLocal.endOf('month').format('YYYY-MM-DD'))
+        .endOf('day')
+        .toDate();
+    }
+
+    return { startUtc, endUtc };
+  }
+
+  async getListBookingByAdmin(start?: string, end?: string) {
+    const { startUtc, endUtc } = this.getUtcRangeFromLocal(start, end);
+
+    const filter: any = {
+      status: { $in: [OccupancyStatus.CONFIRMED, OccupancyStatus.CHECKED_IN] },
+      checkInDate: { $lt: endUtc },
+      checkOutDate: { $gt: startUtc },
+    };
+
+    const bookings = await this.bookingModel
+      .find(filter)
+      .populate({ path: 'room', select: 'name roomType' })
+      .sort({ checkInDate: 1 })
+      .lean();
+
+    const events: any[] = [];
+
+    for (const b of bookings) {
+
+
+      events.push({
+        kind: 'stay',
+        isCheckOut: false,
+        bookingId: b.bookingId,
+        status: b.status,
+        roomId: b?.room?._id ?? b.room,
+        userEmail: b.userEmail,
+        userPhone: b.userPhone,
+        totalPrice: b.totalPrice,
+        checkInDate: b.checkInDate,
+        checkOutDate: b.checkOutDate,
+        numberOfGuests: b.numberOfGuests,
+      });
+
+
+      if (new Date(b.checkOutDate) >= startUtc && new Date(b.checkOutDate) < endUtc) {
+
+        events.push({
+          kind: 'checkout',
+          isCheckOut: true,
+          bookingId: b.bookingId,
+          status: b.status,
+          roomId: b?.room?._id ?? b.room,
+          userEmail: b.userEmail,
+          userPhone: b.userPhone,
+          totalPrice: b.totalPrice,
+          checkInDate: b.checkInDate,
+          checkOutDate: b.checkOutDate,
+          numberOfGuests: b.numberOfGuests,
+        });
+      }
+    }
+
+    return events;
+  }
+
+
 }
