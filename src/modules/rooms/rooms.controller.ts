@@ -25,6 +25,7 @@ export class RoomsController {
 
   @Get(':id')
   @ResponseMessage('Fetched a room successfully')
+  @Public()
   async findOne(@Param('id') id: string) {
     return this.roomsService.findOne(id);
   }
@@ -51,7 +52,7 @@ export class RoomsController {
     return { message: 'Room deleted successfully' };
   }
 
- 
+
 
   @Get()
   @Public()

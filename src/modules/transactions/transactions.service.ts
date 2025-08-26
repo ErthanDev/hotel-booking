@@ -142,4 +142,46 @@ export class TransactionsService {
     this.logger.log(`Transaction created successfully with ID: ${savedTransaction._id}`);
     return savedTransaction;
   }
+
+  async getMonthlyRevenue(year: number, method?: PaymentMethod) {
+    const TZ = 'Asia/Ho_Chi_Minh';
+    if (!year || year < 1970 || year > 3000) {
+      year = new Date().getFullYear();
+    }
+    const start = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
+    const end = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0));
+
+    const match: any = {
+      status: TransactionStatus.SUCCESS,
+      createdAt: { $gte: start, $lt: end },
+    };
+    if (method) match.method = method;
+
+    const rows = await this.transactionModel.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: '%Y-%m',
+              date: '$createdAt',
+              timezone: TZ,
+            },
+          },
+          revenue: { $sum: '$amount' },
+          count: { $sum: 1 },
+        },
+      },
+      { $project: { _id: 0, month: '$_id', revenue: 1, count: 1 } },
+      { $sort: { month: 1 } },
+    ]);
+
+    const result: { month: string; revenue: number; count: number }[] = [];
+    for (let m = 1; m <= 12; m++) {
+      const key = `${year}-${String(m).padStart(2, '0')}`;
+      const r = rows.find((x) => x.month === key);
+      result.push({ month: key, revenue: r?.revenue ?? 0, count: r?.count ?? 0 });
+    }
+    return result;
+  }
 }
