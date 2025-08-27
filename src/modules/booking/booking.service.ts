@@ -530,5 +530,22 @@ export class BookingService {
     return events;
   }
 
-2222222222
+  async updateBookingStatus(bookingId: string, status: OccupancyStatus) {
+    this.logger.log(`Updating booking status for ID: ${bookingId} to ${status}`);
+
+    const booking = await this.bookingModel.findOne({ bookingId });
+    if (!booking) {
+      throw new AppException({
+        message: `Booking with ID ${bookingId} not found`,
+        errorCode: 'BOOKING_NOT_FOUND',
+        statusCode: HttpStatus.NOT_FOUND,
+      });
+    }
+    booking.status = status;
+    await booking.save();
+    return {
+      bookingId: booking.bookingId,
+      status: booking.status,
+    };
+  }
 }

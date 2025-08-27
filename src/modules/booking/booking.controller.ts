@@ -8,6 +8,7 @@ import { Roles } from 'src/decorators/roles.decorator';
 import { UserRole } from 'src/constants/user-role';
 import { CreateBookingDtoByAdminDto } from './dto/create-booking-by-admin.dto';
 import { Public } from 'src/decorators/public.decorator';
+import { OccupancyStatus } from 'src/constants/occupancy-status.enum';
 
 @Controller('booking')
 export class BookingController {
@@ -64,5 +65,12 @@ export class BookingController {
   @Roles(UserRole.ADMIN)
   async getBookingCalendar(@Query('start') start: string, @Query('end') end: string) {
     return this.bookingService.getListBookingByAdmin(start, end);
+  }
+
+  @Patch('update-booking-status/:bookingId')
+  @ResponseMessage('Booking status updated successfully')
+  @Roles(UserRole.ADMIN)
+  async updateBookingStatus(@Param('bookingId') bookingId: string, @Body('status') status: string) {
+    return this.bookingService.updateBookingStatus(bookingId, status as OccupancyStatus);
   }
 }
