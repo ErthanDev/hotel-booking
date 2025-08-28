@@ -44,54 +44,81 @@ export class UsersService {
     }
   }
 
-  async findAll(queryUserDto: QueryUserDto) {
-    const { search, role, isVerified, page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc' } = queryUserDto;
-
-    const filter: any = {};
-
-    if (search) {
-      filter.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phoneNumber: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    if (role) {
-      filter.role = role;
-    }
-
-    if (typeof isVerified === 'boolean') {
-      filter.isVerified = isVerified;
-    }
-
+  async findAll(query: QueryUserDto){
+    const page = Math.max(Number(query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
     const skip = (page - 1) * limit;
-    const sortOptions: any = {};
-    sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
-    const [users, total] = await Promise.all([
-      this.userModel
-        .find(filter)
-        .select('-password')
-        .sort(sortOptions)
-        .skip(skip)
-        .limit(limit)
-        .exec(),
-      this.userModel.countDocuments(filter)
-    ]);
+    const baseMatch: any = {};
+  
 
-    return {
-      users,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-        hasNext: page < Math.ceil(total / limit),
-        hasPrev: page > 1
-      }
-    };
+    const pipeline: any[] = [{ $match: baseMatch }];
+
+    if (query.q?.trim()) {
+      const q = query.q.trim();
+      const regex = new RegExp(q, 'i');
+      pipeline.push({
+        $match: {
+          $or: [
+            { email: regex },
+            { phoneNumber: regex },
+            { firstName: regex },
+            { lastName: regex },
+            {
+              $expr: {
+                $regexMatch: {
+                  input: { $concat: ['$firstName', ' ', '$lastName'] },
+                  regex: q,
+                  options: 'i',
+                },
+              },
+            },
+          ],
+        },
+      });
+    }
+
+    pipeline.push(
+      {
+        $lookup: {
+          from: 'bookings',
+          let: { email: '$email' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$userEmail', '$$email'] } } },
+            {
+              $group: {
+                _id: null,
+                count: { $sum: 1 },
+                total: { $sum: '$totalPrice' },
+              },
+            },
+          ],
+          as: 'bookingStats',
+        },
+      },
+      {
+        $addFields: {
+          bookingsCount: { $ifNull: [{ $arrayElemAt: ['$bookingStats.count', 0] }, 0] },
+          totalSpent: { $ifNull: [{ $arrayElemAt: ['$bookingStats.total', 0] }, 0] },
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: { $concat: ['$firstName', ' ', '$lastName'] },
+          contactPhone: '$phoneNumber',
+          isVerified: 1,
+          bookingsCount: 1,
+          totalSpent: 1,
+        },
+      },
+      { $sort: { createdAt: -1, _id: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+    );
+
+    const items = await this.userModel.aggregate(pipeline).exec();
+    return items;
   }
 
   async findOne(id: string): Promise<User> {

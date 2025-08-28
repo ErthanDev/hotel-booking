@@ -23,6 +23,7 @@ export class UsersController {
 
   @Get()
   @Roles(UserRole.ADMIN)
+  // @Public()
   @ResponseMessage('Users retrieved successfully')
   async findAll(@Query() queryUserDto: QueryUserDto) {
     return this.usersService.findAll(queryUserDto);
