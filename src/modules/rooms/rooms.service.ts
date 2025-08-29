@@ -54,14 +54,13 @@ export class RoomsService {
     await this.cacheService.setRoomDetailCacheById(id, room);
     return room;
   }
-
-  async update(id: string, updateRoomDto: UpdateRoomDto, file?: Express.Multer.File): Promise<Room> {
+  async update(id: string, updateRoomDto: UpdateRoomDto, files?: Express.Multer.File[]): Promise<Room> {
     this.logger.log(`Updating room with ID ${id}`);
     const room = await this.findOne(id);
     const transformDto = this.utilsService.removeEmptyValues(updateRoomDto);
     let imageUrls = room.image || [];
 
-    if (file) {
+    if (files && files.length > 0) {
       if (room.image && room.image.length > 0) {
         for (const imageUrl of room.image) {
           const publicId = this.extractPublicIdFromUrl(imageUrl);
@@ -71,8 +70,8 @@ export class RoomsService {
         }
       }
 
-      const uploadResult = await this.uploadService.uploadFile(file, 'rooms');
-      imageUrls = [uploadResult.secure_url];
+      const uploadResults = await this.uploadService.uploadFilesAtomic(files, 'rooms');
+      imageUrls = uploadResults.map(result => result.secure_url);
     }
 
     const updatedRoom = await this.roomModel.findByIdAndUpdate(

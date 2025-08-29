@@ -29,18 +29,16 @@ export class RoomsController {
   async findOne(@Param('id') id: string) {
     return this.roomsService.findOne(id);
   }
-
   @Patch(':id')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FilesInterceptor('files', 10))
   @Roles(UserRole.ADMIN)
   @ResponseMessage('Updated a room successfully')
-
   async update(
     @Param('id') id: string,
     @Body() updateRoomDto: UpdateRoomDto,
-    @UploadedFile() file?: Express.Multer.File
+    @UploadedFiles() files?: Express.Multer.File[]
   ) {
-    return this.roomsService.update(id, updateRoomDto, file);
+    return this.roomsService.update(id, updateRoomDto, files);
   }
 
   @Delete(':id')
