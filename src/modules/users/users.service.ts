@@ -44,13 +44,13 @@ export class UsersService {
     }
   }
 
-  async findAll(query: QueryUserDto){
+  async findAll(query: QueryUserDto) {
     const page = Math.max(Number(query.page) || 1, 1);
     const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
     const skip = (page - 1) * limit;
 
     const baseMatch: any = {};
-  
+
 
     const pipeline: any[] = [{ $match: baseMatch }];
 
@@ -107,6 +107,7 @@ export class UsersService {
           _id: 1,
           name: { $concat: ['$firstName', ' ', '$lastName'] },
           contactPhone: '$phoneNumber',
+          email: 1,
           isVerified: 1,
           bookingsCount: 1,
           totalSpent: 1,
