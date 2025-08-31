@@ -20,6 +20,9 @@ export class CreateBookingDto {
     @Min(1)
     numberOfGuests: number;
 
+    @IsString()
+    @IsOptional()
+    phoneNumber?: string;
 
     @IsOptional()
     @IsString()

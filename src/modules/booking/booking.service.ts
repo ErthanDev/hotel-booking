@@ -29,7 +29,7 @@ export class BookingService {
     private readonly utilsService: UtilsService,
   ) { }
 
-  async createBooking(createBookingDto: CreateBookingDto, userEmail: string, userPhone: string) {
+  async createBooking(createBookingDto: CreateBookingDto, userEmail: string, phoneNumber: string) {
 
     this.logger.log('Creating a new booking');
     const {
@@ -51,7 +51,7 @@ export class BookingService {
     const checkOut = new Date(checkOutDate);
     checkOut.setUTCHours(2, 0, 0, 0);
 
-    this.logger.log(`Booking details: Room ID: ${roomId}, Check-in: ${checkIn}, Check-out: ${checkOut}, User Email: ${userEmail}, User Phone: ${userPhone}`);
+    this.logger.log(`Booking details: Room ID: ${roomId}, Check-in: ${checkIn}, Check-out: ${checkOut}, User Email: ${userEmail}, User Phone: ${createBookingDto.phoneNumber ? createBookingDto.phoneNumber : phoneNumber}`);
     let room: any = null
     const cạchedRoom = await this.cacheService.getRoomDetailCacheById(roomId);
     if (cạchedRoom) {
@@ -90,7 +90,7 @@ export class BookingService {
           totalPrice,
           note: createBookingDto.note,
           userEmail,
-          userPhone,
+          userPhone: createBookingDto.phoneNumber ? createBookingDto.phoneNumber : phoneNumber,
           checkInDate: checkIn,
           checkOutDate: checkOut,
         });
@@ -102,7 +102,7 @@ export class BookingService {
         await this.cacheService.addToZaloPayQueue({
           bookingId,
           userEmail,
-          userPhone,
+          userPhone: createBookingDto.phoneNumber ? createBookingDto.phoneNumber : phoneNumber,
           checkInDate: checkIn,
           checkOutDate: checkOut,
           roomId,
@@ -118,6 +118,8 @@ export class BookingService {
           totalPrice: booking.totalPrice,
           status: booking.status,
           bookingId: booking.bookingId,
+          email: userEmail,
+          phone: createBookingDto.phoneNumber ? createBookingDto.phoneNumber : phoneNumber,
         };
 
         return response;
@@ -442,7 +444,7 @@ export class BookingService {
     const bookings = await this.bookingModel.find({ userEmail }).sort({ createdAt: -1 }).skip(skip).limit(limit).populate({
       path: 'room',
       select: 'name price',
-    }).select('-_id -__v -userEmail -userPhone -note -createdAt -updatedAt -expiredAt -paymentUrl');
+    }).select('-_id -__v  -note  -updatedAt -expiredAt -paymentUrl');
 
     await this.cacheService.setMyBookingsCache(userEmail, limit, page, bookings);
     this.logger.log(`Fetched ${bookings.length} bookings for user: ${userEmail}`);
