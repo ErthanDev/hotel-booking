@@ -54,11 +54,13 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     if (role === UserRole.ADMIN) {
       this.logger.log(`Admin connected: ${email}`);
       client.join(`admin:${email}`);
+      return;
     } else {
       this.logger.log(`User connected: ${email}`);
       const conv = await this.chatService.getOrCreateConversation(email);
       this.logger.log(`User ${email} joined conversation: ${conv._id}`);
       this.joinConversation(client, conv._id.toString(), role);
+      client.emit('chat:conversation:ready', { conversationId: conv._id.toString() });
     }
   }
 
@@ -154,5 +156,6 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     this.logger.debug(`Client ${client.id} joining conversation ${conversationId} with role ${role}`);
     client.join(`conv:${conversationId}`);
   }
+
 
 }
