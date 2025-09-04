@@ -78,13 +78,13 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @MessageBody() bodyText: { text?: string; toUserEmail?: string; conversationId?: string }
   ) {
     const { email, role } = (client as any).user;
-    const body = JSON.parse(bodyText as string);
-    console.log(`Received message from ${email}:`, body.text);
+
+    console.log(`Received message from ${email}:`, bodyText.text);
     const message = await this.chatService.sendMessage({
       senderEmail: email,
-      text: body.text ?? '',
-      toUserEmail: role === UserRole.ADMIN ? body.toUserEmail : undefined,
-      conversationId: body.conversationId,
+      text: bodyText.text ?? '',
+      toUserEmail: role === UserRole.ADMIN ? bodyText.toUserEmail : undefined,
+      conversationId: bodyText.conversationId,
       isAdminSender: role === UserRole.ADMIN,
     });
 
@@ -103,9 +103,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   ) {
     this.logger.log(`Client ${client.id} joining room with body: ${JSON.stringify(bodyText)}`);
     const { email, role } = (client as any).user;
-    const body = JSON.parse(bodyText as string);
-    this.joinConversation(client, body.conversationId!, role);
-    return { ok: true, conversationId: body.conversationId };
+    this.joinConversation(client, bodyText.conversationId!, role);
+    return { ok: true, conversationId: bodyText.conversationId };
   }
 
   @SubscribeMessage('chat:leaveRoom')
@@ -115,9 +114,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   ) {
     this.logger.log(`Client ${client.id} leaving room with body: ${JSON.stringify(bodyText)}`);
     const { email, role } = (client as any).user;
-    const body = JSON.parse(bodyText as string);
-    client.leave(`conv:${body.conversationId}`);
-    return { ok: true, conversationId: body.conversationId };
+    client.leave(`conv:${bodyText.conversationId}`);
+    return { ok: true, conversationId: bodyText.conversationId };
   }
 
   @SubscribeMessage('chat:typing')

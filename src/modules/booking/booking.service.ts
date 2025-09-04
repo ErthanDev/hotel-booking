@@ -487,7 +487,7 @@ export class BookingService {
 
     const bookings = await this.bookingModel
       .find(filter)
-      .populate({ path: 'room', select: 'name roomType' })
+      .populate({ path: 'room', select: 'name roomType _id' })
       .sort({ checkInDate: 1 })
       .lean();
 
@@ -501,7 +501,7 @@ export class BookingService {
         isCheckOut: false,
         bookingId: b.bookingId,
         status: b.status,
-        roomId: b?.room?._id ?? b.room,
+        room: b.room,
         userEmail: b.userEmail,
         userPhone: b.userPhone,
         totalPrice: b.totalPrice,
@@ -518,7 +518,7 @@ export class BookingService {
           isCheckOut: true,
           bookingId: b.bookingId,
           status: b.status,
-          roomId: b?.room?._id ?? b.room,
+          room: b.room,
           userEmail: b.userEmail,
           userPhone: b.userPhone,
           totalPrice: b.totalPrice,
