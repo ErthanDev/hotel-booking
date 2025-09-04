@@ -77,24 +77,30 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @ConnectedSocket() client: Socket,
     @MessageBody() bodyText: { text?: string; toUserEmail?: string; conversationId?: string }
   ) {
-    this.logger.log(`Client ${client.id} sending message with body: ${JSON.stringify(bodyText)}`);
-    const { email, role } = (client as any).user;
+    try {
+      this.logger.log(`Client ${client.id} sending message with body: ${JSON.stringify(bodyText)}`);
+      const { email, role } = (client as any).user;
 
-    this.logger.log(`Received message from ${email}:`, bodyText.text);
-    const message = await this.chatService.sendMessage({
-      senderEmail: email,
-      text: bodyText.text ?? '',
-      toUserEmail: role === UserRole.ADMIN ? bodyText.toUserEmail : undefined,
-      conversationId: bodyText.conversationId,
-      isAdminSender: role === UserRole.ADMIN,
-    });
+      this.logger.log(`Received message from ${email}:`, bodyText.text);
+      const message = await this.chatService.sendMessage({
+        senderEmail: email,
+        text: bodyText.text ?? '',
+        toUserEmail: role === UserRole.ADMIN ? bodyText.toUserEmail : undefined,
+        conversationId: bodyText.conversationId,
+        isAdminSender: role === UserRole.ADMIN,
+      });
 
 
-    this.logger.log(`Message sent by ${email}: ${message.text} to conversation ${message.conversationId}`);
-    this.server.to(`conv:${message.conversationId}`).emit('chat:newMessage', message);
-    this.server.to(`admin:${await this.chatService.getAdminEmail()}`).emit('chat:inboxUpdated');
+      this.logger.log(`Message sent by ${email}: ${message.text} to conversation ${message.conversationId}`);
+      this.server.to(`conv:${message.conversationId}`).emit('chat:newMessage', message);
+      this.server.to(`admin:${await this.chatService.getAdminEmail()}`).emit('chat:inboxUpdated');
 
-    return { ok: true, messageId: message._id };
+      return { ok: true, messageId: message._id };
+    }
+    catch (e) {
+      this.logger.error('send failed', e);
+      return { ok: false, error: e?.message || 'SEND_FAILED' };
+    }
   }
 
   @SubscribeMessage('chat:joinRoom')
