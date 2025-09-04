@@ -77,9 +77,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     @ConnectedSocket() client: Socket,
     @MessageBody() bodyText: { text?: string; toUserEmail?: string; conversationId?: string }
   ) {
+    this.logger.log(`Client ${client.id} sending message with body: ${JSON.stringify(bodyText)}`);
     const { email, role } = (client as any).user;
 
-    console.log(`Received message from ${email}:`, bodyText.text);
+    this.logger.log(`Received message from ${email}:`, bodyText.text);
     const message = await this.chatService.sendMessage({
       senderEmail: email,
       text: bodyText.text ?? '',
